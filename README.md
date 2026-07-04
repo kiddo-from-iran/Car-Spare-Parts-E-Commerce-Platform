@@ -173,7 +173,16 @@ Open the website link on any phone or PC. Use hash routes, e.g.
 | No products / empty shop | Same — frontend cannot reach API | After Render is live, open `/api/health` and `/docs`; first free-tier request may take ~30s |
 | Local carousel images 404 (`lib/assets/images/...`) | Flutter web + GitHub Pages subpath | Fixed in `CatalogAssetImage` (loads `assets/lib/assets/...`); push and redeploy Pages |
 
-Verify API: `curl https://car-spare-parts-api.onrender.com/api/health` should return `{"status":"ok"}`.
+Verify API (replace with your Render service URL from the dashboard):
+
+```bash
+curl https://YOUR-SERVICE.onrender.com/api/health
+# → {"status":"ok"}
+```
+
+If you get `Not Found` / `no-server`, the service is not live yet — check Render **Logs** for build/start errors.
+
+Set the same URL in **`frontend/web/api-config.json`** → `"apiBaseUrl"`, then push so GitHub Pages picks it up.
 
 ### CI / CD workflows
 

@@ -1,4 +1,5 @@
 /// Local image assets for homepage, about page, and category carousels.
+/// Use ASCII filenames only — GitHub Pages / Flutter web fail on Persian paths in URLs.
 class AppAssets {
   static const _root = 'lib/assets/images';
 
@@ -6,13 +7,13 @@ class AppAssets {
     (name: 'پژو ۲۰۶', path: '$_root/cars/206.png'),
     (name: 'پژو ۲۰۶ SD', path: '$_root/cars/206sd.png'),
     (name: 'پژو ۴۰۵', path: '$_root/cars/405.png'),
-    (name: 'پژو پارس', path: '$_root/cars/پارس.png'),
-    (name: 'سمند', path: '$_root/cars/سمند.png'),
-    (name: 'سمند سورن', path: '$_root/cars/سورن.png'),
-    (name: 'دنا', path: '$_root/cars/دنا.png'),
-    (name: 'رانا', path: '$_root/cars/رانا.png'),
-    (name: 'تندر ۹۰', path: '$_root/cars/تندر-90.png'),
-    (name: 'هایما', path: '$_root/cars/هایما.png'),
+    (name: 'پژو پارس', path: '$_root/cars/pars.png'),
+    (name: 'سمند', path: '$_root/cars/samand.png'),
+    (name: 'سمند سورن', path: '$_root/cars/soren.png'),
+    (name: 'دنا', path: '$_root/cars/dena.png'),
+    (name: 'رانا', path: '$_root/cars/rana.png'),
+    (name: 'تندر ۹۰', path: '$_root/cars/tender-90.png'),
+    (name: 'هایما', path: '$_root/cars/haima.png'),
   ];
 
   static const equipments = <({String name, String path})>[
@@ -29,8 +30,8 @@ class AppAssets {
   ];
 
   static const slideshow = [
-    '$_root/slideshow/انواع-قطعات-مصرفی-خودرو-دکتر-یدکی (1).jpg',
-    '$_root/slideshow/با-اسنپ-قسطی-بخر2.jpg',
+    '$_root/slideshow/slide-1.jpg',
+    '$_root/slideshow/slide-2.jpg',
   ];
 
   static const aboutUs = '$_root/about us/images.png';
@@ -53,12 +54,12 @@ class AppAssets {
 
   static const vehicleDiagramFallbacks = <String, String>{
     'peugeot-206': '$_root/cars/206.png',
-    'peugeot-pars': '$_root/cars/پارس.png',
+    'peugeot-pars': '$_root/cars/pars.png',
     'peugeot-405': '$_root/cars/405.png',
-    'samand-ef7': '$_root/cars/سمند.png',
-    'dena-plus': '$_root/cars/دنا.png',
-    'rana': '$_root/cars/رانا.png',
-    'tara': '$_root/cars/روآ.png',
+    'samand-ef7': '$_root/cars/samand.png',
+    'dena-plus': '$_root/cars/dena.png',
+    'rana': '$_root/cars/rana.png',
+    'tara': '$_root/cars/roa.png',
     'shahin': '$_root/cars/206.png',
   };
 
