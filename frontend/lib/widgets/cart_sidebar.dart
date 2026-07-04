@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +7,7 @@ import '../models/product.dart';
 import '../providers/cart_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/product_stock.dart';
+import 'catalog_asset_image.dart';
 
 class CartSidebar extends StatelessWidget {
   const CartSidebar({super.key, this.fullScreen = false});
@@ -132,8 +132,8 @@ class _CartItemRow extends StatelessWidget {
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(4),
-          child: CachedNetworkImage(
-            imageUrl: item.product.images.first,
+          child: CatalogAssetImage(
+            source: item.product.images.first,
             width: 72,
             height: 90,
             fit: BoxFit.cover,

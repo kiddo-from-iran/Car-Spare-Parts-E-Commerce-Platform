@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -9,6 +8,7 @@ import '../providers/cart_provider.dart';
 import '../theme/app_theme.dart';
 import '../theme/responsive.dart';
 import '../utils/product_stock.dart';
+import 'catalog_asset_image.dart';
 import 'luxury_animations.dart';
 
 class ProductCard extends StatefulWidget {
@@ -57,10 +57,10 @@ class _ProductCardState extends State<ProductCard> {
                         onTap: () => context.go('/product/${p.id}'),
                         child: ColoredBox(
                           color: AppColors.surfaceMuted,
-                          child: CachedNetworkImage(
-                            imageUrl: p.images.first,
+                          child: CatalogAssetImage(
+                            source: p.images.first,
                             fit: BoxFit.contain,
-                            placeholder: (_, __) => Container(color: AppColors.surfaceMuted),
+                            placeholder: Container(color: AppColors.surfaceMuted),
                           ),
                         ),
                       ),

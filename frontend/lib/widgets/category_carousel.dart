@@ -1,10 +1,10 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../models/product.dart';
 import '../theme/app_theme.dart';
 import '../theme/responsive.dart';
+import 'catalog_asset_image.dart';
 
 class CategoryCarousel extends StatefulWidget {
   const CategoryCarousel({
@@ -280,14 +280,10 @@ class _CategoryImage extends StatelessWidget {
       color: AppColors.gold,
     );
 
-    if (source.startsWith('assets/')) {
-      return Image.asset(source, fit: BoxFit.contain, errorBuilder: (_, __, ___) => fallback);
-    }
-
-    return CachedNetworkImage(
-      imageUrl: source,
+    return CatalogAssetImage(
+      source: source,
       fit: BoxFit.contain,
-      errorWidget: (_, __, ___) => fallback,
+      error: fallback,
     );
   }
 }

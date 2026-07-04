@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -12,6 +11,7 @@ import '../theme/app_theme.dart';
 import '../theme/responsive.dart';
 import '../utils/product_stock.dart';
 import '../widgets/app_loading_indicator.dart';
+import '../widgets/catalog_asset_image.dart';
 import '../widgets/product_card.dart';
 import '../widgets/product_specs_table.dart';
 
@@ -227,8 +227,8 @@ class _ImageGallery extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Center(
-                child: CachedNetworkImage(
-                  imageUrl: product.images[selectedIndex],
+                child: CatalogAssetImage(
+                  source: product.images[selectedIndex],
                   fit: BoxFit.contain,
                   height: _mainHeight - 32,
                   width: double.infinity,
@@ -299,8 +299,8 @@ class _ThumbTileState extends State<_ThumbTile> {
             borderRadius: BorderRadius.circular(7),
             child: Padding(
               padding: const EdgeInsets.all(4),
-              child: CachedNetworkImage(
-                imageUrl: widget.url,
+              child: CatalogAssetImage(
+                source: widget.url,
                 fit: BoxFit.contain,
               ),
             ),

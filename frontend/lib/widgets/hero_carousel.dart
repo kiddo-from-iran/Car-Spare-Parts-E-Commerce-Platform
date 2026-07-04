@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -8,6 +7,7 @@ import '../constants/app_assets.dart';
 import '../l10n/app_strings.dart';
 import '../theme/app_theme.dart';
 import '../theme/responsive.dart';
+import 'catalog_asset_image.dart';
 import 'luxury_animations.dart';
 
 class HeroCarousel extends StatefulWidget {
@@ -192,10 +192,12 @@ class _SlideImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (path.startsWith('assets/')) {
-      return Image.asset(path, fit: BoxFit.cover, width: double.infinity, height: double.infinity);
-    }
-    return CachedNetworkImage(imageUrl: path, fit: BoxFit.cover);
+    return CatalogAssetImage(
+      source: path,
+      fit: BoxFit.cover,
+      width: double.infinity,
+      height: double.infinity,
+    );
   }
 }
 
