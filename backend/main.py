@@ -16,13 +16,28 @@ from routers.tickets import admin_router as admin_tickets_router, router as tick
 
 app = FastAPI(title="جهانگیری API", version="3.0.0")
 
+# Bearer-token auth only (no cookies). credentials=False allows allow_origins=["*"].
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=[
+        "https://kiddo-from-iran.github.io",
+        "http://localhost:3000",
+        "http://localhost:5000",
+        "http://localhost:8080",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5000",
+        "http://127.0.0.1:8080",
+    ],
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/api/health")
+def health():
+    return {"status": "ok"}
 
 
 @app.on_event("startup")

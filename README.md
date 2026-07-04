@@ -165,6 +165,16 @@ Open the website link on any phone or PC. Use hash routes, e.g.
    Add `API_BASE_URL` = your Render URL if it differs from the default.
 5. Re-run **Deploy GitHub Pages** workflow (Actions tab) or push a commit.
 
+### Troubleshooting production
+
+| Symptom | Cause | Fix |
+|---------|--------|-----|
+| Browser console: **CORS blocked** on `car-spare-parts-api.onrender.com` | Backend not running (Render returns `404` / `x-render-routing: no-server`) | Complete step 3 above — create the Render service from `render.yaml` |
+| No products / empty shop | Same — frontend cannot reach API | After Render is live, open `/api/health` and `/docs`; first free-tier request may take ~30s |
+| Local carousel images 404 (`lib/assets/images/...`) | Flutter web + GitHub Pages subpath | Fixed in `CatalogAssetImage` (loads `assets/lib/assets/...`); push and redeploy Pages |
+
+Verify API: `curl https://car-spare-parts-api.onrender.com/api/health` should return `{"status":"ok"}`.
+
 ### CI / CD workflows
 
 | Workflow | Trigger | Purpose |
