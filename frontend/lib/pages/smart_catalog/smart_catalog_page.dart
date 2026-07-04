@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -8,8 +7,11 @@ import '../../l10n/app_strings.dart';
 import '../../models/smart_catalog.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/app_loading_indicator.dart';
+import '../../widgets/catalog_asset_image.dart';
 import '../../theme/responsive.dart';
 import 'catalog_diagram.dart';
+import 'catalog_local_assets.dart';
 import 'catalog_product_panel.dart';
 
 class SmartCatalogPage extends StatefulWidget {
@@ -40,6 +42,7 @@ class _SmartCatalogPageState extends State<SmartCatalogPage> {
 
   final _vehicleSearchCtrl = TextEditingController();
   final _partSearchCtrl = TextEditingController();
+  final _productSectionKey = GlobalKey();
   Timer? _vehicleSearchDebounce;
   Timer? _partSearchDebounce;
 
@@ -69,7 +72,7 @@ class _SmartCatalogPageState extends State<SmartCatalogPage> {
       final categories = results[1] as List<CatalogCategory>;
       if (!mounted) return;
       setState(() {
-        _vehicles = vehicles;
+        _vehicles = localizeCatalogVehicles(vehicles);
         _categories = categories;
         _loadingVehicles = false;
       });
@@ -84,7 +87,7 @@ class _SmartCatalogPageState extends State<SmartCatalogPage> {
   Future<void> _loadVehicles({String? search}) async {
     try {
       final vehicles = await context.read<ApiService>().getCatalogVehicles(search: search);
-      if (mounted) setState(() => _vehicles = vehicles);
+      if (mounted) setState(() => _vehicles = localizeCatalogVehicles(vehicles));
     } catch (_) {}
   }
 
@@ -104,7 +107,7 @@ class _SmartCatalogPageState extends State<SmartCatalogPage> {
       if (!mounted) return;
       final viewId = vehicle.views.first.id;
       setState(() {
-        _vehicle = vehicle;
+        _vehicle = localizeCatalogVehicle(vehicle);
         _selectedViewId = viewId;
         _loadingVehicle = false;
       });
@@ -148,7 +151,7 @@ class _SmartCatalogPageState extends State<SmartCatalogPage> {
     }
   }
 
-  Future<void> _selectHotspot(CatalogHotspot hotspot, {bool mobileSheet = false}) async {
+  Future<void> _selectHotspot(CatalogHotspot hotspot) async {
     final vehicleId = _selectedVehicleId;
     final viewId = _selectedViewId;
     if (vehicleId == null || viewId == null) return;
@@ -157,10 +160,7 @@ class _SmartCatalogPageState extends State<SmartCatalogPage> {
       _selectedHotspotId = hotspot.id;
       _loadingProduct = true;
     });
-
-    if (mobileSheet && AppResponsive.isPhone(context)) {
-      // Sheet opens after product data loads.
-    }
+    _scrollToProductSection();
 
     try {
       final data = await context.read<ApiService>().getHotspotProduct(vehicleId, hotspot.id, viewId);
@@ -169,36 +169,61 @@ class _SmartCatalogPageState extends State<SmartCatalogPage> {
           _product = data;
           _loadingProduct = false;
         });
-        if (mobileSheet && AppResponsive.isPhone(context)) {
-          _showMobileProductSheet();
-        }
+        _scrollToProductSection();
       }
     } catch (_) {
       if (mounted) setState(() => _loadingProduct = false);
     }
   }
 
-  void _showMobileProductSheet() {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.catalogDark,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: 0.72,
-        minChildSize: 0.45,
-        maxChildSize: 0.95,
-        builder: (context, scrollController) => CatalogProductPanel(
-          data: _product,
-          loading: _loadingProduct,
-          vehicleName: _vehicle?.name ?? '',
-          compact: true,
-        ),
-      ),
-    );
+  void _scrollToProductSection() {
+    _scrollToProductSectionWithRetry(attemptsLeft: 8);
+  }
+
+  void _scrollToProductSectionWithRetry({required int attemptsLeft}) {
+    if (!mounted || attemptsLeft <= 0) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      final targetContext = _productSectionKey.currentContext;
+      if (targetContext == null) {
+        _scrollToProductSectionWithRetry(attemptsLeft: attemptsLeft - 1);
+        return;
+      }
+
+      final targetBox = targetContext.findRenderObject() as RenderBox?;
+      if (targetBox == null || !targetBox.hasSize) {
+        _scrollToProductSectionWithRetry(attemptsLeft: attemptsLeft - 1);
+        return;
+      }
+
+      if (Scrollable.maybeOf(targetContext) == null) {
+        _scrollToProductSectionWithRetry(attemptsLeft: attemptsLeft - 1);
+        return;
+      }
+
+      Scrollable.ensureVisible(
+        targetContext,
+        duration: const Duration(milliseconds: 520),
+        curve: Curves.easeOutCubic,
+        alignment: 0.04,
+      );
+
+      if (attemptsLeft > 1) {
+        Future<void>.delayed(const Duration(milliseconds: 400), () {
+          if (!mounted) return;
+          final retryContext = _productSectionKey.currentContext;
+          if (retryContext == null) return;
+          Scrollable.ensureVisible(
+            retryContext,
+            duration: const Duration(milliseconds: 320),
+            curve: Curves.easeOutCubic,
+            alignment: 0.04,
+          );
+        });
+      }
+    });
   }
 
   Future<void> _onPartSearch(String query) async {
@@ -272,8 +297,16 @@ class _SmartCatalogPageState extends State<SmartCatalogPage> {
     final isTablet = AppResponsive.isTablet(context);
     final isDesktop = AppResponsive.isDesktop(context);
 
+    final viewportHeight = AppResponsive.viewportContentHeight(context);
+    final showProductPanel = _selectedHotspotId != null || _loadingProduct || _product != null;
+    final catalogBaseHeight = viewportHeight - (isPhone ? 80 : 100);
+    final catalogHeight = showProductPanel ? catalogBaseHeight * 0.66 : catalogBaseHeight;
+
     if (_loadingVehicles) {
-      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+      return SizedBox(
+        height: viewportHeight,
+        child: const AppLoadingCenter(),
+      );
     }
 
     return Padding(
@@ -283,8 +316,13 @@ class _SmartCatalogPageState extends State<SmartCatalogPage> {
         children: [
           _Header(isPhone: isPhone),
           const SizedBox(height: 20),
-          Expanded(
-            child: isPhone
+          AnimatedSize(
+            duration: const Duration(milliseconds: 360),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.topCenter,
+            child: SizedBox(
+              height: catalogHeight,
+              child: isPhone
                 ? _MobileLayout(
                     vehicles: _vehicles,
                     vehicle: _vehicle,
@@ -307,7 +345,7 @@ class _SmartCatalogPageState extends State<SmartCatalogPage> {
                     },
                     onSelectVehicle: _selectVehicle,
                     onSelectView: _selectView,
-                    onHotspotTap: (h) => _selectHotspot(h, mobileSheet: true),
+                    onHotspotTap: (h) => _selectHotspot(h),
                     onHotspotHover: (_) {},
                     onPartSearch: _onPartSearch,
                     onCategory: _setCategory,
@@ -357,25 +395,28 @@ class _SmartCatalogPageState extends State<SmartCatalogPage> {
                           onCategory: _setCategory,
                         ),
                       ),
-                      if (isDesktop)
-                        SizedBox(
-                          width: 360,
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: AppColors.catalogDark,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-                            ),
-                            child: CatalogProductPanel(
-                              data: _product,
-                              loading: _loadingProduct,
-                              vehicleName: _vehicle?.name ?? '',
-                            ),
-                          ),
-                        ),
                     ],
                   ),
+            ),
           ),
+          if (_selectedHotspotId != null || _loadingProduct || _product != null) ...[
+            const SizedBox(height: 28),
+            DecoratedBox(
+              key: _productSectionKey,
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.border),
+                boxShadow: [AppTheme.softShadow],
+              ),
+              child: CatalogProductPanel(
+                data: _product,
+                loading: _loadingProduct,
+                vehicleName: _vehicle?.name ?? '',
+              ),
+            ),
+          ],
+          const SizedBox(height: 24),
         ],
       ),
     );
@@ -395,10 +436,10 @@ class _Header extends StatelessWidget {
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.1),
+            color: AppColors.gold.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: const Icon(Icons.hub_outlined, color: AppColors.primary),
+          child: const Icon(Icons.hub_outlined, color: AppColors.gold),
         ),
         const SizedBox(width: 14),
         Expanded(
@@ -452,7 +493,7 @@ class _VehicleSidebar extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Row(
               children: [
-                Icon(Icons.directions_car_outlined, size: 20, color: AppColors.primary),
+                Icon(Icons.directions_car_outlined, size: 20, color: AppColors.gold),
                 const SizedBox(width: 8),
                 Text(AppStrings.selectVehicle, style: const TextStyle(fontWeight: FontWeight.bold)),
               ],
@@ -501,7 +542,7 @@ class _VehicleCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected ? AppColors.primary.withValues(alpha: 0.04) : AppColors.surface,
+      color: selected ? AppColors.gold.withValues(alpha: 0.06) : AppColors.surface,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onTap,
@@ -516,17 +557,11 @@ class _VehicleCard extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: CachedNetworkImage(
-                  imageUrl: vehicle.image,
+                child: CatalogAssetImage(
+                  source: vehicle.image,
                   width: 56,
                   height: 40,
-                  fit: BoxFit.cover,
-                  errorWidget: (_, __, ___) => Container(
-                    width: 56,
-                    height: 40,
-                    color: AppColors.border,
-                    child: const Icon(Icons.directions_car, size: 20),
-                  ),
+                  fit: BoxFit.contain,
                 ),
               ),
               const SizedBox(width: 10),
@@ -576,7 +611,11 @@ class _VehicleDrawerButton extends StatelessWidget {
                   const SizedBox(height: 12),
                   for (final v in vehicles)
                     ListTile(
-                      leading: CachedNetworkImage(imageUrl: v.image, width: 48, height: 32, fit: BoxFit.cover),
+                      leading: SizedBox(
+                        width: 48,
+                        height: 32,
+                        child: CatalogAssetImage(source: v.image, fit: BoxFit.contain),
+                      ),
                       title: Text(v.name),
                       subtitle: v.subtitle.isNotEmpty ? Text(v.subtitle) : null,
                       selected: v.id == selectedId,
@@ -638,7 +677,7 @@ class _CatalogWorkspace extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (loadingVehicle || vehicle == null) {
-      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+      return const AppLoadingCenter();
     }
 
     final v = vehicle!;
@@ -686,7 +725,7 @@ class _CatalogWorkspace extends StatelessWidget {
         const SizedBox(height: 12),
         Expanded(
           child: loadingHotspots
-              ? const Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold))
+              ? const AppLoadingCenter(size: 72)
               : CatalogDiagram(
                   view: currentView,
                   hotspots: hotspots,
@@ -855,7 +894,7 @@ class _MobileLayout extends StatelessWidget {
                       Expanded(
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(8),
-                          child: CachedNetworkImage(imageUrl: v.image, fit: BoxFit.cover, width: double.infinity),
+                          child: CatalogAssetImage(source: v.image, fit: BoxFit.contain, width: double.infinity),
                         ),
                       ),
                       const SizedBox(height: 4),

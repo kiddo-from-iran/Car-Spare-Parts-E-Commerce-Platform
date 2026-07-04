@@ -7,6 +7,7 @@ import '../l10n/app_strings.dart';
 import '../models/product.dart';
 import '../providers/cart_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/product_stock.dart';
 
 class CartSidebar extends StatelessWidget {
   const CartSidebar({super.key, this.fullScreen = false});
@@ -124,6 +125,7 @@ class _CartItemRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cart = context.read<CartProvider>();
+    final canIncrease = canIncreaseCartQuantity(item, cart.items);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -170,7 +172,7 @@ class _CartItemRow extends StatelessWidget {
                   ),
                   _QtyButton(
                     icon: Icons.add,
-                    onPressed: () => cart.updateQuantity(item, item.quantity + 1),
+                    onPressed: canIncrease ? () => cart.updateQuantity(item, item.quantity + 1) : null,
                   ),
                   const Spacer(),
                   IconButton(
@@ -188,24 +190,27 @@ class _CartItemRow extends StatelessWidget {
 }
 
 class _QtyButton extends StatelessWidget {
-  const _QtyButton({required this.icon, required this.onPressed});
+  const _QtyButton({required this.icon, this.onPressed});
 
   final IconData icon;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onPressed,
       borderRadius: BorderRadius.circular(4),
-      child: Container(
-        width: 28,
-        height: 28,
-        decoration: BoxDecoration(
-          border: Border.all(color: AppColors.border),
-          borderRadius: BorderRadius.circular(4),
+      child: Opacity(
+        opacity: onPressed == null ? 0.35 : 1,
+        child: Container(
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Icon(icon, size: 16),
         ),
-        child: Icon(icon, size: 16),
       ),
     );
   }

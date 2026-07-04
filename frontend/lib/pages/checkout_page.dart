@@ -9,6 +9,7 @@ import '../providers/cart_provider.dart';
 import '../providers/toast_provider.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_loading_indicator.dart';
 import '../theme/responsive.dart';
 
 class CheckoutPage extends StatefulWidget {
@@ -355,7 +356,7 @@ class _CheckoutForm extends StatelessWidget {
           _SectionTitle(title: AppStrings.shippingAddress),
           const SizedBox(height: 16),
           if (loadingAddresses)
-            const LinearProgressIndicator()
+            const AppLoadingBar(size: 36)
           else if (addresses.isNotEmpty) ...[
             RadioListTile<int?>(
               value: null,

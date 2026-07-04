@@ -27,6 +27,9 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 def _address_row(row) -> AddressOut:
+    keys = row.keys() if hasattr(row, "keys") else []
+    lat = row["latitude"] if "latitude" in keys else None
+    lng = row["longitude"] if "longitude" in keys else None
     return AddressOut(
         id=row["id"],
         label=row["label"],
@@ -38,7 +41,18 @@ def _address_row(row) -> AddressOut:
         zip_code=row["zip_code"],
         country=row["country"],
         is_default=bool(row["is_default"]),
+        latitude=lat,
+        longitude=lng,
     )
+
+
+def _split_user_name(full_name: str) -> tuple[str, str]:
+    parts = (full_name or "").strip().split(None, 1)
+    if not parts:
+        return ("", "")
+    if len(parts) == 1:
+        return (parts[0], "")
+    return (parts[0], parts[1])
 
 
 @router.post("/register/send-otp", response_model=OtpSentResponse)
@@ -211,22 +225,27 @@ def create_address(data: AddressCreate, user: dict = Depends(get_current_user)):
     now = datetime.now().isoformat()
     if data.is_default:
         conn.execute("UPDATE user_addresses SET is_default = 0 WHERE user_id = ?", (user["id"],))
+    default_fn, default_ln = _split_user_name(user.get("full_name", ""))
+    first_name = data.first_name or default_fn
+    last_name = data.last_name or default_ln
     cur = conn.cursor()
     cur.execute(
         """INSERT INTO user_addresses
-        (user_id, label, first_name, last_name, address, city, state, zip_code, country, is_default, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (user_id, label, first_name, last_name, address, city, state, zip_code, country, is_default, latitude, longitude, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             user["id"],
             data.label,
-            data.first_name,
-            data.last_name,
+            first_name,
+            last_name,
             data.address,
             data.city,
             data.state,
             data.zip_code,
             data.country,
             int(data.is_default),
+            data.latitude,
+            data.longitude,
             now,
         ),
     )
@@ -253,7 +272,8 @@ def update_address(address_id: int, data: AddressUpdate, user: dict = Depends(ge
 
     conn.execute(
         """UPDATE user_addresses SET
-        label=?, first_name=?, last_name=?, address=?, city=?, state=?, zip_code=?, country=?, is_default=?
+        label=?, first_name=?, last_name=?, address=?, city=?, state=?, zip_code=?, country=?, is_default=?,
+        latitude=COALESCE(?, latitude), longitude=COALESCE(?, longitude)
         WHERE id=?""",
         (
             data.label if data.label is not None else row["label"],
@@ -265,6 +285,8 @@ def update_address(address_id: int, data: AddressUpdate, user: dict = Depends(ge
             data.zip_code if data.zip_code is not None else row["zip_code"],
             data.country if data.country is not None else row["country"],
             int(data.is_default if data.is_default is not None else row["is_default"]),
+            data.latitude,
+            data.longitude,
             address_id,
         ),
     )

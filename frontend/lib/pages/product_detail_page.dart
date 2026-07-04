@@ -10,7 +10,10 @@ import '../providers/wishlist_provider.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../theme/responsive.dart';
+import '../utils/product_stock.dart';
+import '../widgets/app_loading_indicator.dart';
 import '../widgets/product_card.dart';
+import '../widgets/product_specs_table.dart';
 
 class ProductDetailPage extends StatefulWidget {
   const ProductDetailPage({super.key, required this.productId});
@@ -67,7 +70,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+      return const AppLoadingCenter();
     }
 
     final product = _product;
@@ -150,6 +153,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                 ),
               ],
             ),
+          _SpecsSection(product: product),
           if (_related.isNotEmpty) ...[
             const SizedBox(height: 80),
             Text(
@@ -169,6 +173,29 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   }
 }
 
+class _SpecsSection extends StatelessWidget {
+  const _SpecsSection({required this.product});
+
+  final Product product;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 8),
+        Text(
+          'مشخصات فنی',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 12),
+        ProductSpecsTable.fromProduct(product),
+        const SizedBox(height: 32),
+      ],
+    );
+  }
+}
+
 class _ImageGallery extends StatelessWidget {
   const _ImageGallery({
     required this.product,
@@ -180,46 +207,106 @@ class _ImageGallery extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onSelect;
 
+  static const _mainHeight = 420.0;
+  static const _thumbSize = 72.0;
+
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        AspectRatio(
-          aspectRatio: 4 / 5,
-          child: CachedNetworkImage(
-            imageUrl: product.images[selectedIndex],
-            fit: BoxFit.cover,
+        Container(
+          height: _mainHeight,
+          decoration: BoxDecoration(
+            color: AppColors.surfaceMuted,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Center(
+                child: CachedNetworkImage(
+                  imageUrl: product.images[selectedIndex],
+                  fit: BoxFit.contain,
+                  height: _mainHeight - 32,
+                  width: double.infinity,
+                ),
+              ),
+            ),
           ),
         ),
         if (product.images.length > 1) ...[
           const SizedBox(height: 16),
-          Row(
-            children: List.generate(product.images.length, (i) {
-              final selected = i == selectedIndex;
-              return Padding(
-                padding: const EdgeInsetsDirectional.only(end: 12),
-                child: GestureDetector(
-                  onTap: () => onSelect(i),
-                  child: Container(
-                    width: 72,
-                    height: 90,
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: selected ? AppColors.textPrimary : AppColors.border,
-                        width: selected ? 2 : 1,
-                      ),
-                    ),
-                    child: CachedNetworkImage(
-                      imageUrl: product.images[i],
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-              );
-            }),
+          SizedBox(
+            height: _thumbSize + 4,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: product.images.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (context, i) => _ThumbTile(
+                url: product.images[i],
+                selected: i == selectedIndex,
+                onTap: () => onSelect(i),
+              ),
+            ),
           ),
         ],
       ],
+    );
+  }
+}
+
+class _ThumbTile extends StatefulWidget {
+  const _ThumbTile({required this.url, required this.selected, required this.onTap});
+
+  final String url;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  State<_ThumbTile> createState() => _ThumbTileState();
+}
+
+class _ThumbTileState extends State<_ThumbTile> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor = widget.selected
+        ? AppColors.gold
+        : _hovered
+            ? AppColors.gold.withValues(alpha: 0.6)
+            : AppColors.border;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          width: _ImageGallery._thumbSize,
+          height: _ImageGallery._thumbSize,
+          decoration: BoxDecoration(
+            color: AppColors.surfaceMuted,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: borderColor, width: widget.selected ? 2 : 1),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(7),
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: CachedNetworkImage(
+                imageUrl: widget.url,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -247,6 +334,10 @@ class _ProductInfo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cart = context.watch<CartProvider>();
+    final remaining = maxPurchasableQuantity(product, cart.items);
+    final canAdd = remaining > 0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -282,7 +373,16 @@ class _ProductInfo extends StatelessWidget {
           Text(
             AppStrings.formatPrice(product.price),
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w700,
+                color: AppColors.gold,
+              ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          product.availabilityLabel,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: canAdd ? AppColors.success : AppColors.error,
+                fontWeight: FontWeight.w600,
               ),
         ),
         const SizedBox(height: 24),
@@ -335,8 +435,8 @@ class _ProductInfo extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
-            onPressed: product.inStock ? onAddToCart : null,
-            child: Text(product.inStock ? AppStrings.addToCart : AppStrings.outOfStock),
+            onPressed: canAdd ? onAddToCart : null,
+            child: Text(canAdd ? AppStrings.addToCart : AppStrings.outOfStock),
           ),
         ),
       ],

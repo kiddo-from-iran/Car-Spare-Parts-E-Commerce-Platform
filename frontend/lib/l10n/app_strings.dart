@@ -18,10 +18,14 @@ class AppStrings {
   static const logout = 'خروج';
   static const myOrders = 'سفارش‌های من';
   static const myTickets = 'تیکت‌های پشتیبانی';
+  static const ticketsOnOrdersHint = 'تیکت پشتیبانی فقط برای سفارش‌های در جریان قابل ثبت است';
+  static const mapPickHint = 'روی نقشه کلیک کنید تا محل دقیق آدرس مشخص شود';
   static const myWishlist = 'علاقه‌مندی‌ها';
   static const notifications = 'اعلان‌ها';
   static const adminPanel = 'پنل مدیریت';
   static const account = 'حساب کاربری';
+  static const userDashboard = 'داشبورد';
+  static const userProfile = 'پروفایل';
   static const viewAll = 'مشاهده همه';
 
   static const searchHint = 'جستجو در جهانگیری';
@@ -52,6 +56,9 @@ class AppStrings {
   static const newBadge = 'جدید';
   static const inStock = 'موجود';
   static const outOfStock = 'ناموجود';
+  static String stockAvailable(int quantity) => '$quantity عدد موجود';
+  static const stockInsufficient = 'موجودی کافی نیست';
+  static const stockMaxInCart = 'به حداکثر موجودی این محصول رسیدید';
   static const quickView = 'مشاهده سریع';
   static const addToCart = 'افزودن به سبد';
   static const addToWishlist = 'علاقه‌مندی';
@@ -235,6 +242,15 @@ class AppStrings {
   static const adminReports = 'گزارش‌ها';
   static const adminSettings = 'تنظیمات';
   static const adminRevenue = 'گزارش فروش';
+  static const adminCatalogs = 'کاتالوگ هوشمند';
+  static const addCatalog = 'افزودن کاتالوگ';
+  static const editCatalog = 'ویرایش کاتالوگ';
+  static const catalogHotspots = 'نقاط روی تصویر';
+  static const catalogHotspotLabel = 'عنوان نقطه';
+  static const catalogAssignProducts = 'محصولات مرتبط';
+  static const catalogUploadImage = 'بارگذاری تصویر';
+  static const catalogAddView = 'افزودن نما';
+  static const catalogClickToPlace = 'روی تصویر کلیک کنید تا نقطه اضافه شود';
   static const save = 'ذخیره';
   static const cancel = 'انصراف';
 
@@ -250,6 +266,7 @@ class AppStrings {
   static const catalogClickHint = 'روی نقاط مشخص‌شده کلیک کنید تا اطلاعات قطعه نمایش داده شود';
   static const catalogCategoriesTitle = 'دسته‌بندی قطعات این خودرو';
   static const catalogAllCategories = 'همه';
+  static const catalogViewPlaceholder = 'تصویر این نما هنوز اضافه نشده است';
   static const partNumber = 'شماره فنی';
   static const oemNumber = 'شماره OEM';
   static const material = 'جنس';

@@ -52,12 +52,15 @@ def _build_ticket(conn, ticket_row, include_messages: bool = True) -> TicketOut:
 def create_ticket(data: TicketCreate, user: dict = Depends(get_current_user)):
     conn = get_conn()
     order = conn.execute(
-        "SELECT id FROM orders WHERE id = ? AND user_id = ?",
+        "SELECT id, status FROM orders WHERE id = ? AND user_id = ?",
         (data.order_id, user["id"]),
     ).fetchone()
     if order is None:
         conn.close()
         raise HTTPException(status_code=404, detail="سفارش یافت نشد")
+    if order["status"] in ("delivered", "cancelled"):
+        conn.close()
+        raise HTTPException(status_code=400, detail="فقط برای سفارش‌های در جریان می‌توانید تیکت ثبت کنید")
 
     now = datetime.now().isoformat()
     cur = conn.cursor()

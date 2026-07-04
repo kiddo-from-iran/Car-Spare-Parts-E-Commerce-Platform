@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../constants/app_assets.dart';
 import '../l10n/app_strings.dart';
 import '../models/product.dart';
 import '../models/search_suggestion.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../theme/responsive.dart';
+import '../widgets/app_loading_indicator.dart';
 import '../widgets/category_carousel.dart';
 import '../widgets/feature_cards.dart';
 import '../widgets/hero_carousel.dart';
@@ -21,11 +23,17 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  List<CategoryItem> _vehicles = [];
-  List<CategoryItem> _parts = [];
   List<PartnerBrand> _brands = [];
   List<dynamic> _featured = [];
   bool _loading = true;
+
+  late final List<CategoryItem> _vehicleItems = AppAssets.cars
+      .map((c) => CategoryItem(id: c.name, name: c.name, image: c.path))
+      .toList();
+
+  late final List<CategoryItem> _partItems = AppAssets.equipments
+      .map((e) => CategoryItem(id: e.name, name: e.name, image: e.path))
+      .toList();
 
   @override
   void didChangeDependencies() {
@@ -37,17 +45,13 @@ class _HomePageState extends State<HomePage> {
     final api = context.read<ApiService>();
     try {
       final results = await Future.wait([
-        api.getVehicleCategories(),
-        api.getPartCategories(),
         api.getPartnerBrands(),
         api.getProducts(featured: true),
       ]);
       if (mounted) {
         setState(() {
-          _vehicles = results[0] as List<CategoryItem>;
-          _parts = results[1] as List<CategoryItem>;
-          _brands = results[2] as List<PartnerBrand>;
-          _featured = results[3] as List;
+          _brands = results[0] as List<PartnerBrand>;
+          _featured = results[1] as List;
           _loading = false;
         });
       }
@@ -65,23 +69,21 @@ class _HomePageState extends State<HomePage> {
       children: [
         const HeroCarousel(),
         const SizedBox(height: 48),
-        if (_vehicles.isNotEmpty)
-          CategoryCarousel(
-            title: AppStrings.carCategoriesTitle,
-            items: _vehicles,
-            queryKey: 'vehicle',
-            visibleItems: 5,
-            largeItems: true,
-          ),
+        CategoryCarousel(
+          title: AppStrings.carCategoriesTitle,
+          items: _vehicleItems,
+          queryKey: 'vehicle',
+          visibleItems: 5,
+          largeItems: true,
+        ),
         const SizedBox(height: 48),
-        if (_parts.isNotEmpty)
-          CategoryCarousel(
-            title: AppStrings.partCategoriesTitle,
-            items: _parts,
-            queryKey: 'part_category',
-            visibleItems: 8,
-            largeItems: false,
-          ),
+        CategoryCarousel(
+          title: AppStrings.partCategoriesTitle,
+          items: _partItems,
+          queryKey: 'part_category',
+          visibleItems: 8,
+          largeItems: false,
+        ),
         PartnerBrandsSection(brands: _brands),
         const FeatureCards(),
         Padding(
@@ -100,7 +102,7 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 32),
               if (_loading)
-                const Center(child: Padding(padding: EdgeInsets.all(48), child: CircularProgressIndicator(strokeWidth: 2)))
+                const AppLoadingCenter(size: 96, padding: EdgeInsets.all(48))
               else if (_featured.isEmpty)
                 Text(AppStrings.loadError, style: TextStyle(color: AppColors.textMuted))
               else

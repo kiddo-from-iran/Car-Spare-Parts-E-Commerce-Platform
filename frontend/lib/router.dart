@@ -1,11 +1,14 @@
 import 'package:go_router/go_router.dart';
 
 import '../pages/about_page.dart';
+import '../pages/account/account_shell.dart';
 import '../pages/account/addresses_page.dart';
 import '../pages/account/profile_page.dart';
 import '../pages/account/order_detail_page.dart';
 import '../pages/account/my_orders_page.dart';
+import '../pages/account/my_tickets_page.dart';
 import '../pages/account/wishlist_page.dart';
+import '../pages/admin/admin_catalogs_page.dart';
 import '../pages/admin/admin_dashboard_page.dart';
 import '../pages/admin/admin_orders_page.dart';
 import '../pages/admin/admin_products_page.dart';
@@ -41,7 +44,13 @@ GoRouter createRouter(AuthProvider auth) {
         return '/';
       }
       if (auth.isLoggedIn && isAuthRoute) {
-        return auth.isAdmin ? '/admin' : '/account/orders';
+        return auth.isAdmin ? '/admin' : '/account';
+      }
+      if (path == '/account/orders') {
+        return '/account';
+      }
+      if (path == '/account/addresses') {
+        return '/account/profile';
       }
       return null;
     },
@@ -71,22 +80,28 @@ GoRouter createRouter(AuthProvider auth) {
           GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
           GoRoute(path: '/register', builder: (context, state) => const RegisterPage()),
           GoRoute(path: '/forgot-password', builder: (context, state) => const ForgotPasswordPage()),
+        ],
+      ),
+      ShellRoute(
+        builder: (context, state, child) => AppShell(child: AccountShell(child: child)),
+        routes: [
+          GoRoute(path: '/account', builder: (context, state) => const AccountDashboardPage()),
+          GoRoute(path: '/account/orders', builder: (context, state) => const MyOrdersPage()),
           GoRoute(path: '/account/profile', builder: (context, state) => const ProfilePage()),
           GoRoute(path: '/account/addresses', builder: (context, state) => const AddressesPage()),
-          GoRoute(path: '/account/orders', builder: (context, state) => const MyOrdersPage()),
+          GoRoute(path: '/account/tickets', builder: (context, state) => const MyTicketsPage()),
           GoRoute(
             path: '/account/orders/:id',
             builder: (context, state) =>
                 OrderDetailPage(orderId: int.parse(state.pathParameters['id']!)),
           ),
-          GoRoute(path: '/account/wishlist', builder: (context, state) => const WishlistPage()),
-          GoRoute(path: '/account/notifications', builder: (context, state) => const NotificationsPage()),
-          GoRoute(path: '/account/tickets', builder: (context, state) => const MyTicketsPage()),
           GoRoute(
             path: '/account/tickets/:id',
             builder: (context, state) =>
                 TicketDetailPage(ticketId: int.parse(state.pathParameters['id']!)),
           ),
+          GoRoute(path: '/account/wishlist', builder: (context, state) => const WishlistPage()),
+          GoRoute(path: '/account/notifications', builder: (context, state) => const NotificationsPage()),
         ],
       ),
       ShellRoute(
@@ -95,6 +110,7 @@ GoRouter createRouter(AuthProvider auth) {
           GoRoute(path: '/admin', builder: (context, state) => const AdminDashboardPage()),
           GoRoute(path: '/admin/orders', builder: (context, state) => const AdminOrdersPage()),
           GoRoute(path: '/admin/products', builder: (context, state) => const AdminProductsPage()),
+          GoRoute(path: '/admin/catalogs', builder: (context, state) => const AdminCatalogsPage()),
           GoRoute(path: '/admin/revenue', builder: (context, state) => const AdminRevenuePage()),
           GoRoute(path: '/admin/tickets', builder: (context, state) => const AdminTicketsPage()),
           GoRoute(

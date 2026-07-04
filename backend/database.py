@@ -8,7 +8,7 @@ import bcrypt
 from constants import OrderStatus
 
 DB_PATH = Path(__file__).parent / "shop.db"
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 6
 
 
 def hash_password(plain: str) -> str:
@@ -212,6 +212,16 @@ def _migrate_schema(cur: sqlite3.Cursor) -> None:
     _migrate_product_columns(cur)
     _migrate_users_email_nullable(cur)
     _maybe_reseed_products(cur)
+    _migrate_catalog_tables(cur)
+    _migrate_address_coords(cur)
+
+
+def _migrate_address_coords(cur: sqlite3.Cursor) -> None:
+    cols = _table_columns(cur, "user_addresses")
+    if "latitude" not in cols:
+        cur.execute("ALTER TABLE user_addresses ADD COLUMN latitude REAL")
+    if "longitude" not in cols:
+        cur.execute("ALTER TABLE user_addresses ADD COLUMN longitude REAL")
 
 
 def _migrate_product_columns(cur: sqlite3.Cursor) -> None:
@@ -232,6 +242,13 @@ def _migrate_product_columns(cur: sqlite3.Cursor) -> None:
     for col, typedef in new_cols:
         if col not in product_cols:
             cur.execute(f"ALTER TABLE products ADD COLUMN {col} {typedef}")
+
+
+def _migrate_catalog_tables(cur: sqlite3.Cursor) -> None:
+    from catalog_db import ensure_catalog_tables, seed_catalog_from_static
+
+    ensure_catalog_tables(cur)
+    seed_catalog_from_static(cur)
 
 
 def _maybe_reseed_products(cur: sqlite3.Cursor) -> None:

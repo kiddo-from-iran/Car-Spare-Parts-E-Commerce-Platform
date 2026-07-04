@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../constants/app_assets.dart';
 import '../l10n/app_strings.dart';
 import '../theme/app_theme.dart';
 import '../theme/responsive.dart';
@@ -42,6 +43,13 @@ class _HeroCarouselState extends State<HeroCarousel> {
     super.dispose();
   }
 
+  String _slideImage(int index) {
+    if (index < AppAssets.slideshow.length) {
+      return AppAssets.slideshow[index];
+    }
+    return AppAssets.slideshow.first;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isPhone = AppResponsive.isPhone(context);
@@ -57,19 +65,20 @@ class _HeroCarouselState extends State<HeroCarousel> {
             onPageChanged: (i) => setState(() => _current = i),
             itemCount: AppStrings.heroSlides.length,
             itemBuilder: (context, index) {
-              final (title, subtitle, image) = AppStrings.heroSlides[index];
+              final (title, subtitle, _) = AppStrings.heroSlides[index];
+              final image = _slideImage(index);
               return Stack(
                 fit: StackFit.expand,
                 children: [
-                  CachedNetworkImage(imageUrl: image, fit: BoxFit.cover),
+                  _SlideImage(path: image),
                   Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: AlignmentDirectional.centerStart,
                         end: AlignmentDirectional.centerEnd,
                         colors: [
-                          AppColors.navy.withValues(alpha: 0.85),
-                          AppColors.navy.withValues(alpha: 0.4),
+                          AppColors.black.withValues(alpha: 0.82),
+                          AppColors.black.withValues(alpha: 0.35),
                           Colors.transparent,
                         ],
                       ),
@@ -106,8 +115,10 @@ class _HeroCarouselState extends State<HeroCarousel> {
                         ElevatedButton(
                           onPressed: () => context.go('/shop'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.white,
-                            foregroundColor: AppColors.primary,
+                            backgroundColor: AppColors.gold,
+                            foregroundColor: AppColors.textOnGold,
+                            elevation: 2,
+                            shadowColor: AppColors.gold.withValues(alpha: 0.4),
                           ),
                           child: const Text(AppStrings.exploreShop),
                         ),
@@ -132,7 +143,7 @@ class _HeroCarouselState extends State<HeroCarousel> {
                   width: active ? 24 : 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: active ? AppColors.white : AppColors.white.withValues(alpha: 0.4),
+                    color: active ? AppColors.gold : AppColors.white.withValues(alpha: 0.4),
                     borderRadius: BorderRadius.circular(4),
                   ),
                 );
@@ -146,7 +157,7 @@ class _HeroCarouselState extends State<HeroCarousel> {
               bottom: 0,
               child: Center(
                 child: _ArrowButton(
-                  icon: Icons.chevron_right,
+                  icon: Icons.chevron_left,
                   onTap: () => _controller.previousPage(
                     duration: const Duration(milliseconds: 400),
                     curve: AppCurves.luxury,
@@ -160,7 +171,7 @@ class _HeroCarouselState extends State<HeroCarousel> {
               bottom: 0,
               child: Center(
                 child: _ArrowButton(
-                  icon: Icons.chevron_left,
+                  icon: Icons.chevron_right,
                   onTap: () => _controller.nextPage(
                     duration: const Duration(milliseconds: 400),
                     curve: AppCurves.luxury,
@@ -172,6 +183,19 @@ class _HeroCarouselState extends State<HeroCarousel> {
         ],
       ),
     );
+  }
+}
+
+class _SlideImage extends StatelessWidget {
+  const _SlideImage({required this.path});
+  final String path;
+
+  @override
+  Widget build(BuildContext context) {
+    if (path.startsWith('assets/')) {
+      return Image.asset(path, fit: BoxFit.cover, width: double.infinity, height: double.infinity);
+    }
+    return CachedNetworkImage(imageUrl: path, fit: BoxFit.cover);
   }
 }
 

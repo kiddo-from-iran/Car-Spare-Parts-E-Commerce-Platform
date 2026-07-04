@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../l10n/app_strings.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/toast_provider.dart';
-import '../../theme/responsive.dart';
+import '../../theme/app_theme.dart';
+import 'account_addresses_section.dart';
+import 'account_page_scaffold.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -18,7 +19,6 @@ class _ProfilePageState extends State<ProfilePage> {
   final _name = TextEditingController();
   final _email = TextEditingController();
   bool _saving = false;
-  String? _error;
 
   @override
   void initState() {
@@ -35,10 +35,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _save() async {
-    setState(() {
-      _saving = true;
-      _error = null;
-    });
+    setState(() => _saving = true);
     try {
       await context.read<AuthProvider>().updateProfile(
             fullName: _name.text.trim(),
@@ -64,15 +61,19 @@ class _ProfilePageState extends State<ProfilePage> {
     final user = context.watch<AuthProvider>().user;
     if (user == null) return const SizedBox.shrink();
 
-    return Padding(
-      padding: EdgeInsets.all(AppResponsive.pagePadding(context)),
+    return AccountPageScaffold(
+      title: AppStrings.userProfile,
+      scrollable: true,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 520),
+        constraints: const BoxConstraints(maxWidth: 720),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(AppStrings.myProfile, style: Theme.of(context).textTheme.headlineMedium),
-            const SizedBox(height: 24),
+            Text(
+              'مشخصات',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 16),
             InputDecorator(
               decoration: const InputDecoration(labelText: AppStrings.phoneReadonly),
               child: Text(user.phone, textAlign: TextAlign.right),
@@ -90,20 +91,23 @@ class _ProfilePageState extends State<ProfilePage> {
               keyboardType: TextInputType.emailAddress,
               textAlign: TextAlign.right,
             ),
-            if (_error != null) ...[
-              const SizedBox(height: 12),
-              Text(_error!, style: const TextStyle(color: Colors.red)),
-            ],
+            const SizedBox(height: 20),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: FilledButton(
+                onPressed: _saving ? null : _save,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.gold,
+                  foregroundColor: AppColors.textOnGold,
+                ),
+                child: Text(_saving ? AppStrings.processing : AppStrings.save),
+              ),
+            ),
+            const SizedBox(height: 32),
+            const Divider(),
             const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _saving ? null : _save,
-              child: Text(_saving ? AppStrings.processing : AppStrings.save),
-            ),
-            const SizedBox(height: 16),
-            OutlinedButton(
-              onPressed: () => context.go('/account/addresses'),
-              child: const Text(AppStrings.myAddresses),
-            ),
+            const AccountAddressesSection(),
+            const SizedBox(height: 24),
           ],
         ),
       ),

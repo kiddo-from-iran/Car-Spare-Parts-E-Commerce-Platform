@@ -4,94 +4,142 @@ import 'package:go_router/go_router.dart';
 import '../../l10n/app_strings.dart';
 import '../../theme/app_theme.dart';
 
-class AccountPageShell extends StatelessWidget {
-  const AccountPageShell({super.key, required this.title, required this.child});
+class AccountShell extends StatelessWidget {
+  const AccountShell({super.key, required this.child});
 
-  final String title;
   final Widget child;
+
+  int _selectedIndex(BuildContext context) {
+    final path = GoRouterState.of(context).uri.path;
+    if (path == '/account' || path.startsWith('/account/orders')) return 0;
+    if (path.startsWith('/account/profile') || path.startsWith('/account/addresses')) return 1;
+    if (path.startsWith('/account/tickets')) return 2;
+    return -1;
+  }
 
   @override
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.sizeOf(context).width < 900;
+    final selected = _selectedIndex(context);
+
+    const destinations = [
+      (AppStrings.userDashboard, '/account', Icons.dashboard_outlined),
+      (AppStrings.userProfile, '/account/profile', Icons.person_outline),
+      (AppStrings.myTickets, '/account/tickets', Icons.support_agent_outlined),
+    ];
 
     if (isMobile) {
-      return Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 24),
-            child,
-          ],
-        ),
+      return Column(
+        children: [
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: List.generate(destinations.length, (i) {
+                final (label, path, _) = destinations[i];
+                final active = selected == i;
+                return Padding(
+                  padding: const EdgeInsetsDirectional.only(end: 8),
+                  child: ChoiceChip(
+                    label: Text(label),
+                    selected: active,
+                    selectedColor: AppColors.gold.withValues(alpha: 0.2),
+                    labelStyle: TextStyle(
+                      color: active ? AppColors.gold : AppColors.textPrimary,
+                      fontWeight: active ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                    side: BorderSide(color: active ? AppColors.gold : AppColors.border),
+                    onSelected: (_) => context.go(path),
+                  ),
+                );
+              }),
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(child: child),
+        ],
       );
     }
 
-    return Padding(
-      padding: const EdgeInsets.all(32),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const AccountSidebar(),
-          const SizedBox(width: 32),
-          Expanded(
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          width: 240,
+          decoration: const BoxDecoration(color: AppColors.black),
+          child: SingleChildScrollView(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(title, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
-                const SizedBox(height: 24),
-                child,
+                Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.account_circle_outlined, color: AppColors.gold),
+                      const SizedBox(width: 8),
+                      Text(
+                        AppStrings.account,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textOnDark,
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+                for (var i = 0; i < destinations.length; i++)
+                  _AccountNavTile(
+                    label: destinations[i].$1,
+                    path: destinations[i].$2,
+                    icon: destinations[i].$3,
+                    active: selected == i,
+                  ),
               ],
             ),
           ),
-        ],
-      ),
+        ),
+        Expanded(
+          child: ColoredBox(
+            color: AppColors.background,
+            child: child,
+          ),
+        ),
+      ],
     );
   }
 }
 
-class AccountSidebar extends StatelessWidget {
-  const AccountSidebar({super.key});
+class _AccountNavTile extends StatelessWidget {
+  const _AccountNavTile({
+    required this.label,
+    required this.path,
+    required this.icon,
+    required this.active,
+  });
+
+  final String label;
+  final String path;
+  final IconData icon;
+  final bool active;
 
   @override
   Widget build(BuildContext context) {
-    final path = GoRouterState.of(context).uri.path;
-    final items = [
-      (AppStrings.myProfile, '/account/profile', Icons.person_outline),
-      (AppStrings.myOrders, '/account/orders', Icons.receipt_long_outlined),
-      (AppStrings.myWishlist, '/account/wishlist', Icons.favorite_border),
-      (AppStrings.myAddresses, '/account/addresses', Icons.location_on_outlined),
-      (AppStrings.myTickets, '/account/tickets', Icons.support_agent_outlined),
-      (AppStrings.notifications, '/account/notifications', Icons.notifications_outlined),
-    ];
-
-    return Container(
-      width: 240,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+    return ListTile(
+      selected: active,
+      selectedTileColor: AppColors.gold.withValues(alpha: 0.12),
+      leading: Icon(
+        icon,
+        color: active ? AppColors.gold : AppColors.textOnDark.withValues(alpha: 0.65),
+        size: 22,
       ),
-      child: Column(
-        children: items.map((item) {
-          final active = path == item.$2 || path.startsWith('${item.$2}/');
-          return ListTile(
-            leading: Icon(item.$3, color: active ? AppColors.primary : AppColors.textSecondary, size: 22),
-            title: Text(
-              item.$1,
-              style: TextStyle(
-                color: active ? AppColors.primary : AppColors.textPrimary,
-                fontWeight: active ? FontWeight.w600 : FontWeight.w400,
-              ),
-            ),
-            selected: active,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            onTap: () => context.go(item.$2),
-          );
-        }).toList(),
+      title: Text(
+        label,
+        style: TextStyle(
+          color: active ? AppColors.gold : AppColors.textOnDark.withValues(alpha: 0.85),
+          fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+        ),
       ),
+      onTap: () => context.go(path),
     );
   }
 }

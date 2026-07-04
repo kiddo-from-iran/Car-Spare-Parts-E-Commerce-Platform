@@ -82,7 +82,7 @@ class _DesktopMenu extends StatelessWidget {
       children: [
         Container(
           width: 240,
-          color: AppColors.sidebarBg,
+          color: AppColors.black,
           child: ListView.builder(
             padding: const EdgeInsets.symmetric(vertical: 8),
             itemCount: categories.length,
@@ -92,26 +92,31 @@ class _DesktopMenu extends StatelessWidget {
               return InkWell(
                 onTap: () => onSelect(i),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   decoration: BoxDecoration(
-                    color: active ? AppColors.white : null,
+                    color: active ? AppColors.gold.withValues(alpha: 0.14) : null,
                     border: Border(
                       right: BorderSide(
-                        color: active ? AppColors.primary : Colors.transparent,
+                        color: active ? AppColors.gold : Colors.transparent,
                         width: 3,
                       ),
                     ),
                   ),
                   child: Row(
                     children: [
-                      Icon(iconFor(cat.icon), size: 20, color: active ? AppColors.primary : AppColors.textSecondary),
+                      Icon(
+                        iconFor(cat.icon),
+                        size: 22,
+                        color: active ? AppColors.gold : AppColors.textOnDark.withValues(alpha: 0.85),
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           cat.name,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: active ? AppColors.primary : AppColors.textPrimary,
-                                fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                color: active ? AppColors.gold : AppColors.textOnDark,
+                                fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                                fontSize: 15,
                               ),
                         ),
                       ),
@@ -137,7 +142,7 @@ class _DesktopMenu extends StatelessWidget {
                         context.go('/shop?category=${Uri.encodeComponent(selected.name)}');
                       },
                       icon: const Icon(Icons.chevron_left, size: 18),
-                      label: Text(AppStrings.viewAll, style: TextStyle(color: AppColors.accent)),
+                      label: Text(AppStrings.viewAll, style: TextStyle(color: AppColors.gold)),
                     ),
                   ],
                 ),
@@ -159,13 +164,14 @@ class _DesktopMenu extends StatelessWidget {
                                 },
                                 child: Row(
                                   children: [
-                                    Container(width: 3, height: 16, color: AppColors.primary),
+                                    Container(width: 3, height: 16, color: AppColors.gold),
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
                                         sub.name,
                                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
                                               fontWeight: FontWeight.w700,
+                                              fontSize: 16,
                                             ),
                                       ),
                                     ),
@@ -177,17 +183,12 @@ class _DesktopMenu extends StatelessWidget {
                               ...sub.items.map(
                                 (item) => Padding(
                                   padding: const EdgeInsets.only(bottom: 6),
-                                  child: InkWell(
+                                  child: _MegaMenuTextLink(
+                                    label: item,
                                     onTap: () {
                                       onClose();
                                       context.go('/shop?search=${Uri.encodeComponent(item)}');
                                     },
-                                    child: Text(
-                                      item,
-                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                            color: AppColors.textSecondary,
-                                          ),
-                                    ),
                                   ),
                                 ),
                               ),
@@ -227,18 +228,58 @@ class _MobileMenu extends StatelessWidget {
             },
           ),
           ...sub.items.map(
-            (item) => ListTile(
-              dense: true,
-              title: Text(item, style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-              onTap: () {
-                onClose();
-                context.go('/shop?search=${Uri.encodeComponent(item)}');
-              },
+            (item) => Padding(
+              padding: const EdgeInsetsDirectional.only(start: 16, end: 16, bottom: 8),
+              child: _MegaMenuTextLink(
+                label: item,
+                onTap: () {
+                  onClose();
+                  context.go('/shop?search=${Uri.encodeComponent(item)}');
+                },
+              ),
             ),
           ),
           const Divider(),
         ],
       ],
+    );
+  }
+}
+
+class _MegaMenuTextLink extends StatefulWidget {
+  const _MegaMenuTextLink({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  State<_MegaMenuTextLink> createState() => _MegaMenuTextLinkState();
+}
+
+class _MegaMenuTextLinkState extends State<_MegaMenuTextLink> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedDefaultTextStyle(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                color: _hovered ? AppColors.gold : AppColors.textSecondary,
+                fontSize: 15,
+                height: 1.5,
+                fontWeight: _hovered ? FontWeight.w600 : FontWeight.normal,
+              ),
+          child: Text(widget.label),
+        ),
+      ),
     );
   }
 }

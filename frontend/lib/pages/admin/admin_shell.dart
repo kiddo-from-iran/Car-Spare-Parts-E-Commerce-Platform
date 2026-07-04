@@ -14,8 +14,9 @@ class AdminShell extends StatelessWidget {
     if (path == '/admin' || path == '/admin/dashboard') return 0;
     if (path.startsWith('/admin/orders')) return 1;
     if (path.startsWith('/admin/products')) return 2;
-    if (path.startsWith('/admin/revenue')) return 3;
-    if (path.startsWith('/admin/tickets')) return 4;
+    if (path.startsWith('/admin/catalogs')) return 3;
+    if (path.startsWith('/admin/revenue')) return 4;
+    if (path.startsWith('/admin/tickets')) return 5;
     return 0;
   }
 
@@ -28,6 +29,7 @@ class AdminShell extends StatelessWidget {
       (AppStrings.adminDashboard, '/admin'),
       (AppStrings.adminOrders, '/admin/orders'),
       (AppStrings.adminProducts, '/admin/products'),
+      (AppStrings.adminCatalogs, '/admin/catalogs'),
       (AppStrings.adminRevenue, '/admin/revenue'),
       (AppStrings.adminTickets, '/admin/tickets'),
     ];
@@ -46,7 +48,12 @@ class AdminShell extends StatelessWidget {
                   child: ChoiceChip(
                     label: Text(label),
                     selected: selected == i,
-                    selectedColor: AppColors.accentLight,
+                    selectedColor: AppColors.gold.withValues(alpha: 0.2),
+                    labelStyle: TextStyle(
+                      color: selected == i ? AppColors.gold : AppColors.textPrimary,
+                      fontWeight: selected == i ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                    side: BorderSide(color: selected == i ? AppColors.gold : AppColors.border),
                     onSelected: (_) => context.go(path),
                   ),
                 );
@@ -60,45 +67,64 @@ class AdminShell extends StatelessWidget {
     }
 
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Container(
           width: 240,
-          decoration: BoxDecoration(
-            color: AppColors.white,
-            border: Border(left: BorderSide(color: AppColors.border)),
+          decoration: const BoxDecoration(
+            color: AppColors.black,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
               Padding(
                 padding: const EdgeInsets.all(24),
                 child: Row(
                   children: [
-                    Icon(Icons.dashboard_outlined, color: AppColors.primary),
+                    const Icon(Icons.dashboard_outlined, color: AppColors.gold),
                     const SizedBox(width: 8),
-                    Text(AppStrings.adminPanel, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                    Text(
+                      AppStrings.adminPanel,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textOnDark,
+                          ),
+                    ),
                   ],
                 ),
               ),
               ...List.generate(destinations.length, (i) {
                 final (label, path) = destinations[i];
+                final isActive = selected == i;
                 return ListTile(
-                  selected: selected == i,
-                  selectedTileColor: AppColors.accentLight,
+                  selected: isActive,
+                  selectedTileColor: AppColors.gold.withValues(alpha: 0.12),
                   leading: Icon(
                     _iconFor(i),
-                    color: selected == i ? AppColors.primary : AppColors.textSecondary,
+                    color: isActive ? AppColors.gold : AppColors.textOnDark.withValues(alpha: 0.65),
                     size: 22,
                   ),
-                  title: Text(label),
+                  title: Text(
+                    label,
+                    style: TextStyle(
+                      color: isActive ? AppColors.gold : AppColors.textOnDark.withValues(alpha: 0.85),
+                      fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                    ),
+                  ),
                   onTap: () => context.go(path),
                 );
               }),
-            ],
+              ],
+            ),
           ),
         ),
-        Expanded(child: child),
+        Expanded(
+          child: ColoredBox(
+            color: AppColors.background,
+            child: child,
+          ),
+        ),
       ],
     );
   }
@@ -107,8 +133,9 @@ class AdminShell extends StatelessWidget {
         0 => Icons.analytics_outlined,
         1 => Icons.receipt_long_outlined,
         2 => Icons.inventory_2_outlined,
-        3 => Icons.bar_chart_outlined,
-        4 => Icons.support_agent_outlined,
+        3 => Icons.map_outlined,
+        4 => Icons.bar_chart_outlined,
+        5 => Icons.support_agent_outlined,
         _ => Icons.circle,
       };
 }

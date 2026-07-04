@@ -19,7 +19,11 @@ dependencies:
   google_fonts: ^6.2.1
   cached_network_image: ^3.4.1
   shared_preferences: ^2.5.3
+  file_picker: ^8.1.7
   url_launcher: ^6.3.1
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+  lottie: ^3.3.1
 
 dev_dependencies:
   flutter_test:
@@ -28,3 +32,10 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - lib/assets/lottie/
+    - lib/assets/images/cars/
+    - lib/assets/images/catalog/
+    - lib/assets/images/equipments/
+    - lib/assets/images/slideshow/
+    - lib/assets/images/about us/

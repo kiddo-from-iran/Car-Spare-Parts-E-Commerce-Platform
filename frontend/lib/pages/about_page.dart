@@ -1,14 +1,17 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../constants/app_assets.dart';
 import '../l10n/app_strings.dart';
 import '../theme/app_theme.dart';
 import '../theme/responsive.dart';
 import '../widgets/luxury_animations.dart';
+import '../widgets/map_embed.dart';
 
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
+
+  static final _mapsUrl = Uri.parse('https://maps.google.com/?q=Baghestan,Karaj,Iran');
 
   @override
   Widget build(BuildContext context) {
@@ -32,18 +35,20 @@ class AboutPage extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  flex: 2,
-                  child: _AboutContent(),
-                ),
+                const Expanded(flex: 2, child: _AboutContent()),
                 const SizedBox(width: 48),
                 Expanded(
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
-                    child: CachedNetworkImage(
-                      imageUrl: 'https://picsum.photos/seed/jahangiri-store/800/600',
+                    child: Image.asset(
+                      AppAssets.aboutUs,
                       height: 360,
                       fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        height: 360,
+                        color: AppColors.surfaceMuted,
+                        child: const Icon(Icons.storefront_outlined, size: 64, color: AppColors.gold),
+                      ),
                     ),
                   ),
                 ),
@@ -52,11 +57,16 @@ class AboutPage extends StatelessWidget {
           else ...[
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: CachedNetworkImage(
-                imageUrl: 'https://picsum.photos/seed/jahangiri-store/800/400',
+              child: Image.asset(
+                AppAssets.aboutUs,
                 height: 200,
                 width: double.infinity,
                 fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  height: 200,
+                  color: AppColors.surfaceMuted,
+                  child: const Icon(Icons.storefront_outlined, size: 48, color: AppColors.gold),
+                ),
               ),
             ),
             const SizedBox(height: 24),
@@ -68,29 +78,9 @@ class AboutPage extends StatelessWidget {
           Text(AppStrings.aboutAddress, style: TextStyle(color: AppColors.textSecondary)),
           const SizedBox(height: 16),
           InkWell(
-            onTap: () => launchUrl(
-              Uri.parse('https://maps.google.com/?q=Baghestan,Karaj,Iran'),
-              mode: LaunchMode.externalApplication,
-            ),
+            onTap: () => launchUrl(_mapsUrl, mode: LaunchMode.externalApplication),
             borderRadius: BorderRadius.circular(16),
-            child: Container(
-              height: isMobile ? 200 : 320,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: AppColors.surfaceMuted,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.map_outlined, size: 48, color: AppColors.primary.withValues(alpha: 0.7)),
-                  const SizedBox(height: 12),
-                  Text('باغستان، کرج — کلیک برای مشاهده در نقشه',
-                      style: TextStyle(color: AppColors.textSecondary)),
-                ],
-              ),
-            ),
+            child: MapEmbed(height: isMobile ? 200 : 320),
           ),
           const SizedBox(height: 48),
         ],
@@ -110,12 +100,12 @@ class _AboutContent extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: AppColors.accentLight,
+            color: AppColors.gold.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
             AppStrings.aboutManagement,
-            style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600),
+            style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.w600),
           ),
         ),
         const SizedBox(height: 20),
@@ -145,7 +135,7 @@ class _ValueItem extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 22, color: AppColors.primary),
+          Icon(icon, size: 22, color: AppColors.gold),
           const SizedBox(width: 12),
           Expanded(child: Text(text, style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.6))),
         ],

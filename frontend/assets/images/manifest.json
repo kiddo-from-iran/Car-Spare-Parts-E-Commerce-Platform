@@ -1,0 +1,85 @@
+{
+  "cars": [
+    {
+      "file": "206.png",
+      "asset": "assets/images/cars/206.png"
+    },
+    {
+      "file": "206sd.png",
+      "asset": "assets/images/cars/206sd.png"
+    },
+    {
+      "file": "405.png",
+      "asset": "assets/images/cars/405.png"
+    },
+    {
+      "file": "سمند.png",
+      "asset": "assets/images/cars/سمند.png"
+    },
+    {
+      "file": "سورن.png",
+      "asset": "assets/images/cars/سورن.png"
+    },
+    {
+      "file": "پارس.png",
+      "asset": "assets/images/cars/پارس.png"
+    }
+  ],
+  "equipments": [
+    {
+      "file": "2-fan-turbo-2.jpg",
+      "asset": "assets/images/equipments/2-fan-turbo-2.jpg"
+    },
+    {
+      "file": "brake-pad.jpg",
+      "asset": "assets/images/equipments/brake-pad.jpg"
+    },
+    {
+      "file": "clutch-kit.jpg",
+      "asset": "assets/images/equipments/clutch-kit.jpg"
+    },
+    {
+      "file": "Engine-spark-plug-wire.jpg",
+      "asset": "assets/images/equipments/Engine-spark-plug-wire.jpg"
+    },
+    {
+      "file": "kds-.jpg",
+      "asset": "assets/images/equipments/kds-.jpg"
+    },
+    {
+      "file": "spark-plug.jpg",
+      "asset": "assets/images/equipments/spark-plug.jpg"
+    },
+    {
+      "file": "Time-belt-frame.jpg",
+      "asset": "assets/images/equipments/Time-belt-frame.jpg"
+    },
+    {
+      "file": "Timing-belt-bearing.jpg",
+      "asset": "assets/images/equipments/Timing-belt-bearing.jpg"
+    },
+    {
+      "file": "Timing-belt.jpg",
+      "asset": "assets/images/equipments/Timing-belt.jpg"
+    },
+    {
+      "file": "wheel-disc.jpg",
+      "asset": "assets/images/equipments/wheel-disc.jpg"
+    }
+  ],
+  "slideshow": [
+    {
+      "file": "slide-4648.jpg",
+      "asset": "assets/images/slideshow/slide-4648.jpg"
+    },
+    {
+      "file": "slide-3557.jpg",
+      "asset": "assets/images/slideshow/slide-3557.jpg"
+    },
+    {
+      "file": "slide-3993.jpg",
+      "asset": "assets/images/slideshow/slide-3993.jpg"
+    }
+  ],
+  "about_us": []
+}

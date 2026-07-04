@@ -26,7 +26,6 @@ class AppResponsive {
 
   static int productGridColumns(BuildContext context) {
     final w = widthOf(context);
-    if (w >= 1400) return 5;
     if (w >= 1100) return 4;
     if (w >= 768) return 3;
     if (w >= 480) return 2;
@@ -35,5 +34,13 @@ class AppResponsive {
 
   static int categoryGridColumns(BuildContext context) {
     return isPhone(context) ? 2 : isTablet(context) ? 3 : 4;
+  }
+
+  /// Approximate body height below the fixed navbar (for full-viewport tool pages).
+  static double viewportContentHeight(BuildContext context) {
+    final media = MediaQuery.sizeOf(context);
+    final topInset = MediaQuery.paddingOf(context).top;
+    final navbarHeight = widthOf(context) < 900 ? 112.0 : 128.0;
+    return (media.height - navbarHeight - topInset).clamp(320.0, media.height);
   }
 }

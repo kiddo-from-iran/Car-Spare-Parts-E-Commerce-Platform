@@ -80,7 +80,7 @@ class _FeatureCardState extends State<_FeatureCard> {
           color: AppColors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: _hovered ? AppColors.primary.withValues(alpha: 0.3) : AppColors.border,
+            color: _hovered ? AppColors.gold.withValues(alpha: 0.3) : AppColors.border,
           ),
           boxShadow: _hovered ? [AppTheme.hoverShadow] : [AppTheme.softShadow],
         ),
@@ -90,10 +90,10 @@ class _FeatureCardState extends State<_FeatureCard> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.accentLight,
+                color: AppColors.gold.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(widget.icon, size: 32, color: AppColors.primary),
+              child: Icon(widget.icon, size: 32, color: AppColors.gold),
             ),
             const SizedBox(height: 16),
             Text(

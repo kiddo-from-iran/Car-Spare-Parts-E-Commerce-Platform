@@ -8,6 +8,8 @@ import '../../models/ticket.dart';
 import '../../providers/toast_provider.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/app_loading_indicator.dart';
+import 'account_page_scaffold.dart';
 
 class OrderDetailPage extends StatefulWidget {
   const OrderDetailPage({super.key, required this.orderId});
@@ -64,26 +66,33 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+    if (_loading) {
+      return const AccountPageScaffold(
+        title: AppStrings.orderDetails,
+        child: AppLoadingCenter(size: 72),
+      );
+    }
     final order = _order;
     if (order == null) {
-      return Center(child: Text(AppStrings.noOrders));
+      return AccountPageScaffold(
+        title: AppStrings.orderDetails,
+        child: Center(child: Text(AppStrings.noOrders)),
+      );
     }
 
-    return Padding(
-      padding: const EdgeInsets.all(24),
+    return AccountPageScaffold(
+      title: AppStrings.orderDetails,
+      scrollable: true,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 720),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             TextButton.icon(
-              onPressed: () => context.go('/account/orders'),
+              onPressed: () => context.go('/account'),
               icon: const Icon(Icons.arrow_forward, size: 18),
-              label: const Text(AppStrings.myOrders),
+              label: const Text(AppStrings.userDashboard),
             ),
-            const SizedBox(height: 16),
-            Text(AppStrings.orderDetails, style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: 8),
             Text('${AppStrings.orderNumber}: ${order.orderNumber}'),
             const SizedBox(height: 4),
@@ -124,65 +133,14 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
               textAlign: TextAlign.right,
             ),
             const SizedBox(height: 16),
-            ElevatedButton(onPressed: _createTicket, child: const Text(AppStrings.send)),
+            FilledButton(
+              onPressed: _createTicket,
+              style: FilledButton.styleFrom(backgroundColor: AppColors.gold, foregroundColor: AppColors.textOnGold),
+              child: const Text(AppStrings.send),
+            ),
+            const SizedBox(height: 24),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class MyTicketsPage extends StatefulWidget {
-  const MyTicketsPage({super.key});
-
-  @override
-  State<MyTicketsPage> createState() => _MyTicketsPageState();
-}
-
-class _MyTicketsPageState extends State<MyTicketsPage> {
-  List<Ticket> _tickets = [];
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    try {
-      final tickets = await context.read<ApiService>().getMyTickets();
-      if (mounted) setState(() => _tickets = tickets);
-    } catch (_) {}
-    if (mounted) setState(() => _loading = false);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator(strokeWidth: 2));
-
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(AppStrings.myTickets, style: Theme.of(context).textTheme.headlineSmall),
-          const SizedBox(height: 24),
-          if (_tickets.isEmpty)
-            Text(AppStrings.noTickets, style: TextStyle(color: AppColors.textMuted))
-          else
-            ..._tickets.map(
-              (t) => Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: ListTile(
-                  title: Text(t.subject),
-                  subtitle: Text('${t.orderNumber} · ${t.status == 'open' ? 'باز' : 'بسته'}'),
-                  trailing: const Icon(Icons.arrow_back_ios, size: 16),
-                  onTap: () => context.go('/account/tickets/${t.id}'),
-                ),
-              ),
-            ),
-        ],
       ),
     );
   }
@@ -235,19 +193,34 @@ class _TicketDetailPageState extends State<TicketDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+    if (_loading) {
+      return const AccountPageScaffold(
+        title: AppStrings.myTickets,
+        child: AppLoadingCenter(size: 72),
+      );
+    }
     final ticket = _ticket;
-    if (ticket == null) return Center(child: Text(AppStrings.noTickets));
+    if (ticket == null) {
+      return AccountPageScaffold(
+        title: AppStrings.myTickets,
+        child: Center(child: Text(AppStrings.noTickets)),
+      );
+    }
 
-    return Padding(
-      padding: const EdgeInsets.all(24),
+    return AccountPageScaffold(
+      title: ticket.subject,
+      scrollable: true,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 720),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(ticket.subject, style: Theme.of(context).textTheme.headlineSmall),
-            const SizedBox(height: 16),
+            TextButton.icon(
+              onPressed: () => context.go('/account/tickets'),
+              icon: const Icon(Icons.arrow_forward, size: 18),
+              label: const Text(AppStrings.myTickets),
+            ),
+            const SizedBox(height: 8),
             ...ticket.messages.map(
               (m) => Container(
                 width: double.infinity,
@@ -277,8 +250,13 @@ class _TicketDetailPageState extends State<TicketDetailPage> {
                 textAlign: TextAlign.right,
               ),
               const SizedBox(height: 12),
-              ElevatedButton(onPressed: _sendReply, child: const Text(AppStrings.send)),
+              FilledButton(
+                onPressed: _sendReply,
+                style: FilledButton.styleFrom(backgroundColor: AppColors.gold, foregroundColor: AppColors.textOnGold),
+                child: const Text(AppStrings.send),
+              ),
             ],
+            const SizedBox(height: 24),
           ],
         ),
       ),

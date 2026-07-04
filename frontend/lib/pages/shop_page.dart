@@ -6,6 +6,7 @@ import '../models/product.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../theme/responsive.dart';
+import '../widgets/app_loading_indicator.dart';
 import '../widgets/product_card.dart';
 
 class ShopPage extends StatefulWidget {
@@ -220,7 +221,7 @@ class _ProductArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (state._loading) {
-      return const Center(child: Padding(padding: EdgeInsets.all(64), child: CircularProgressIndicator(strokeWidth: 2)));
+      return const AppLoadingCenter(size: 96, padding: EdgeInsets.all(64));
     }
     if (state._products.isEmpty) {
       return Center(
@@ -267,7 +268,7 @@ class _Pagination extends StatelessWidget {
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Material(
-              color: active ? AppColors.primary : AppColors.white,
+              color: active ? AppColors.gold : AppColors.white,
               borderRadius: BorderRadius.circular(8),
               child: InkWell(
                 onTap: () {
@@ -280,7 +281,7 @@ class _Pagination extends StatelessWidget {
                   height: 40,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    border: Border.all(color: active ? AppColors.primary : AppColors.border),
+                    border: Border.all(color: active ? AppColors.gold : AppColors.border),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -330,7 +331,7 @@ class _FiltersPanel extends StatelessWidget {
         children: [
           Text(AppStrings.filters, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 16),
-          _FilterSection(
+          _CollapsibleFilterSection(
             title: AppStrings.vehicleFilter,
             children: state._vehicles.map((v) => _CheckTile(
                   label: v,
@@ -338,7 +339,7 @@ class _FiltersPanel extends StatelessWidget {
                   onChanged: (checked) => state.setState(() => state._vehicle = checked ? v : null),
                 )).toList(),
           ),
-          _FilterSection(
+          _CollapsibleFilterSection(
             title: AppStrings.partCategoryFilter,
             children: state._partCategories.map((c) => _CheckTile(
                   label: c,
@@ -346,7 +347,7 @@ class _FiltersPanel extends StatelessWidget {
                   onChanged: (checked) => state.setState(() => state._partCategory = checked ? c : null),
                 )).toList(),
           ),
-          _FilterSection(
+          _CollapsibleFilterSection(
             title: AppStrings.countryFilter,
             children: state._countries.map((c) => _CheckTile(
                   label: c,
@@ -354,7 +355,7 @@ class _FiltersPanel extends StatelessWidget {
                   onChanged: (checked) => state.setState(() => state._country = checked ? c : null),
                 )).toList(),
           ),
-          _FilterSection(
+          _CollapsibleFilterSection(
             title: AppStrings.brandFilter,
             children: state._brands.map((b) => _CheckTile(
                   label: b,
@@ -362,20 +363,24 @@ class _FiltersPanel extends StatelessWidget {
                   onChanged: (checked) => state.setState(() => state._brand = checked ? b : null),
                 )).toList(),
           ),
-          const SizedBox(height: 8),
-          Text(AppStrings.formatPriceRange(state._minPrice, state._maxPrice),
-              style: Theme.of(context).textTheme.labelMedium),
-          RangeSlider(
-            values: RangeValues(state._minPrice, state._maxPrice),
-            min: 0,
-            max: _ShopPageState.maxPriceLimit,
-            divisions: 40,
-            onChanged: (v) => state.setState(() {
-              state._minPrice = v.start;
-              state._maxPrice = v.end;
-            }),
+          _CollapsibleFilterSection(
+            title: AppStrings.priceRange,
+            children: [
+              Text(AppStrings.formatPriceRange(state._minPrice, state._maxPrice),
+                  style: Theme.of(context).textTheme.labelMedium),
+              RangeSlider(
+                values: RangeValues(state._minPrice, state._maxPrice),
+                min: 0,
+                max: _ShopPageState.maxPriceLimit,
+                divisions: 40,
+                onChanged: (v) => state.setState(() {
+                  state._minPrice = v.start;
+                  state._maxPrice = v.end;
+                }),
+              ),
+            ],
           ),
-          _FilterSection(
+          _CollapsibleFilterSection(
             title: AppStrings.availability,
             children: [
               _CheckTile(
@@ -406,20 +411,57 @@ class _FiltersPanel extends StatelessWidget {
   }
 }
 
-class _FilterSection extends StatelessWidget {
-  const _FilterSection({required this.title, required this.children});
+class _CollapsibleFilterSection extends StatefulWidget {
+  const _CollapsibleFilterSection({required this.title, required this.children});
+
   final String title;
   final List<Widget> children;
 
   @override
+  State<_CollapsibleFilterSection> createState() => _CollapsibleFilterSectionState();
+}
+
+class _CollapsibleFilterSectionState extends State<_CollapsibleFilterSection> {
+  bool _expanded = false;
+
+  @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(title, style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600)),
-        const SizedBox(height: 4),
-        ...children,
-        const SizedBox(height: 12),
+        InkWell(
+          onTap: () => setState(() => _expanded = !_expanded),
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    widget.title,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                ),
+                AnimatedRotation(
+                  turns: _expanded ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 200),
+                  child: Icon(Icons.keyboard_arrow_down, size: 22, color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+        ),
+        AnimatedCrossFade(
+          firstChild: const SizedBox.shrink(),
+          secondChild: Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: widget.children),
+          ),
+          crossFadeState: _expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+          duration: const Duration(milliseconds: 200),
+          sizeCurve: Curves.easeOut,
+        ),
+        Divider(height: 1, color: AppColors.border.withValues(alpha: 0.7)),
       ],
     );
   }

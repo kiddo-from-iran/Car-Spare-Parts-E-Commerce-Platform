@@ -45,9 +45,52 @@ class CatalogHotspot(BaseModel):
     category: str
     x: float
     y: float
-    product_id: int
+    product_id: int = 0
+    product_ids: list[int] = Field(default_factory=list)
     part_number: str = ""
     oem: str = ""
+
+
+class CatalogHotspotInput(BaseModel):
+    id: Optional[str] = None
+    label: str
+    category: str = "body"
+    x: float
+    y: float
+    product_id: Optional[int] = None
+    product_ids: list[int] = Field(default_factory=list)
+    part_number: str = ""
+    oem: str = ""
+
+
+class CatalogViewInput(BaseModel):
+    id: Optional[str] = None
+    name: str
+    image: str = ""
+    hotspots: list[CatalogHotspotInput] = Field(default_factory=list)
+
+
+class AdminCatalogSave(BaseModel):
+    id: Optional[str] = None
+    name: str
+    subtitle: str = ""
+    year: str = ""
+    brand_logo: str = ""
+    image: str = ""
+    views: list[CatalogViewInput] = Field(default_factory=list)
+
+
+class AdminCatalogSummary(BaseModel):
+    id: str
+    name: str
+    subtitle: str = ""
+    year: str = ""
+    brand_logo: str = ""
+    image: str = ""
+    view_count: int = 0
+    hotspot_count: int = 0
+    created_at: str = ""
+    updated_at: str = ""
 
 
 class CatalogVehicle(BaseModel):
@@ -64,12 +107,13 @@ class CatalogVehicle(BaseModel):
 class CatalogHotspotProduct(BaseModel):
     hotspot: CatalogHotspot
     product: "Product"
+    products: list["Product"] = Field(default_factory=list)
     part_number: str = ""
     oem_number: str = ""
     material: str = ""
     weight_grams: int = 0
     warranty: str = ""
-    related: list["Product"] = []
+    related: list["Product"] = Field(default_factory=list)
 
 
 class Product(BaseModel):
@@ -188,21 +232,25 @@ class ProfileUpdateRequest(BaseModel):
 
 class AddressCreate(BaseModel):
     label: str = "خانه"
-    first_name: str
-    last_name: str
     address: str
-    city: str
-    state: str
-    zip_code: str
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    first_name: str = ""
+    last_name: str = ""
+    city: str = ""
+    state: str = ""
+    zip_code: str = ""
     country: str = "ایران"
     is_default: bool = False
 
 
 class AddressUpdate(BaseModel):
     label: Optional[str] = None
+    address: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
-    address: Optional[str] = None
     city: Optional[str] = None
     state: Optional[str] = None
     zip_code: Optional[str] = None
@@ -221,6 +269,8 @@ class AddressOut(BaseModel):
     zip_code: str
     country: str
     is_default: bool
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 
 class DiscountValidateRequest(BaseModel):

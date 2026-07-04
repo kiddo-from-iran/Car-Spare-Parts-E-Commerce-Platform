@@ -96,7 +96,7 @@ class _PartnerBrandsSectionState extends State<PartnerBrandsSection> {
                       top: 0,
                       bottom: 0,
                       child: Center(
-                        child: _NavBtn(icon: Icons.chevron_right, onTap: () => _scrollBy(-220)),
+                        child: _NavBtn(icon: Icons.chevron_left, onTap: () => _scrollBy(-220)),
                       ),
                     ),
                     PositionedDirectional(
@@ -104,7 +104,7 @@ class _PartnerBrandsSectionState extends State<PartnerBrandsSection> {
                       top: 0,
                       bottom: 0,
                       child: Center(
-                        child: _NavBtn(icon: Icons.chevron_left, onTap: () => _scrollBy(220)),
+                        child: _NavBtn(icon: Icons.chevron_right, onTap: () => _scrollBy(220)),
                       ),
                     ),
                   ],
@@ -144,7 +144,7 @@ class _BrandLogoCardState extends State<_BrandLogoCard> {
         decoration: BoxDecoration(
           color: AppColors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: _hovered ? AppColors.primary.withValues(alpha: 0.35) : AppColors.border),
+          border: Border.all(color: _hovered ? AppColors.gold.withValues(alpha: 0.35) : AppColors.border),
           boxShadow: _hovered ? [AppTheme.softShadow] : null,
         ),
         child: Column(

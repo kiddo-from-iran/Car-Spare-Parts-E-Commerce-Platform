@@ -125,7 +125,7 @@ class CatalogHotspotTooltip extends StatelessWidget {
         ),
         child: Text(
           label,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.gold),
         ),
       ),
     );

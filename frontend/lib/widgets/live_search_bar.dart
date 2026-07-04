@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../l10n/app_strings.dart';
 import '../models/search_suggestion.dart';
 import '../services/api_service.dart';
+import '../widgets/app_loading_indicator.dart';
 import '../theme/app_theme.dart';
 
 /// Live autocomplete search — dropdown renders in an [Overlay], not in document flow.
@@ -66,6 +67,7 @@ class _LiveSearchBarState extends State<LiveSearchBar> {
   }
 
   void _onFocusChange() {
+    if (mounted) setState(() {});
     if (_focusNode.hasFocus && _controller.text.trim().length >= _minChars) {
       setState(() => _open = true);
       _syncOverlay();
@@ -200,7 +202,7 @@ class _LiveSearchBarState extends State<LiveSearchBar> {
     if (_loading && _results.isEmpty) {
       return const Padding(
         padding: EdgeInsets.all(24),
-        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        child: AppLoadingCenter(size: 48),
       );
     }
     if (_results.isEmpty) {
@@ -298,15 +300,22 @@ class _LiveSearchBarState extends State<LiveSearchBar> {
   @override
   Widget build(BuildContext context) {
     final borderRadius = BorderRadius.circular(widget.compact ? 12 : 24);
-    final showActiveBorder = _showDropdown;
+    final focused = _focusNode.hasFocus;
+    final showActiveBorder = _showDropdown || focused;
 
     return CompositedTransformTarget(
       key: _anchorKey,
       link: _layerLink,
       child: Focus(
         onKeyEvent: _handleKey,
-        child: SizedBox(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOut,
           height: _barHeight,
+          decoration: BoxDecoration(
+            borderRadius: borderRadius,
+            boxShadow: showActiveBorder ? [AppTheme.goldGlow, AppTheme.searchShadow] : [AppTheme.searchShadow],
+          ),
           child: TextField(
             controller: _controller,
             focusNode: _focusNode,
@@ -314,7 +323,7 @@ class _LiveSearchBarState extends State<LiveSearchBar> {
             decoration: InputDecoration(
               hintText: widget.compact ? AppStrings.searchProductsHint : AppStrings.searchHint,
               filled: true,
-              fillColor: AppColors.surfaceMuted,
+              fillColor: AppColors.white,
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               prefixIcon: _loading
                   ? const Padding(
@@ -322,16 +331,16 @@ class _LiveSearchBarState extends State<LiveSearchBar> {
                       child: SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: AppLoadingInline(size: 28),
                       ),
                     )
                   : IconButton(
-                      icon: const Icon(Icons.search, color: AppColors.textMuted),
+                      icon: Icon(Icons.search, color: focused ? AppColors.gold : AppColors.gold.withValues(alpha: 0.75)),
                       onPressed: _goToShop,
                     ),
               suffixIcon: _controller.text.isNotEmpty
                   ? IconButton(
-                      icon: const Icon(Icons.close, size: 18),
+                      icon: const Icon(Icons.close, size: 18, color: AppColors.textMuted),
                       onPressed: () {
                         _controller.clear();
                         _close();
@@ -342,13 +351,13 @@ class _LiveSearchBarState extends State<LiveSearchBar> {
               enabledBorder: OutlineInputBorder(
                 borderRadius: borderRadius,
                 borderSide: BorderSide(
-                  color: showActiveBorder ? AppColors.primary.withValues(alpha: 0.5) : Colors.transparent,
-                  width: 1.5,
+                  color: showActiveBorder ? AppColors.gold.withValues(alpha: 0.6) : AppColors.gold.withValues(alpha: 0.35),
+                  width: 1,
                 ),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: borderRadius,
-                borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                borderSide: const BorderSide(color: AppColors.gold, width: 1.5),
               ),
             ),
             onSubmitted: (_) => _goToShop(),
@@ -392,7 +401,7 @@ class _SuggestionTileState extends State<_SuggestionTile> {
       },
       onExit: (_) => setState(() => _hovered = false),
       child: Material(
-        color: highlighted ? AppColors.accentLight.withValues(alpha: 0.6) : Colors.transparent,
+        color: highlighted ? AppColors.gold.withValues(alpha: 0.08) : Colors.transparent,
         child: InkWell(
           onTap: widget.onTap,
           child: Padding(
@@ -444,7 +453,7 @@ class _SuggestionTileState extends State<_SuggestionTile> {
                   AppStrings.formatPrice(widget.item.price),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         fontWeight: FontWeight.w700,
-                        color: AppColors.primary,
+                        color: AppColors.gold,
                       ),
                 ),
               ],
@@ -485,8 +494,8 @@ class _HighlightText extends StatelessWidget {
         TextSpan(
           text: text.substring(index, index + q.length),
           style: base?.copyWith(
-            backgroundColor: AppColors.primary.withValues(alpha: 0.18),
-            color: AppColors.primaryDark,
+            backgroundColor: AppColors.gold.withValues(alpha: 0.18),
+            color: AppColors.goldDark,
             fontWeight: FontWeight.w700,
           ),
         ),

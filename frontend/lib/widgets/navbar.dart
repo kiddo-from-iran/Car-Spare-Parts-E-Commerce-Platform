@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -25,8 +27,11 @@ class _AppNavbarState extends State<AppNavbar> {
 
   bool _mobileMenuOpen = false;
   bool _megaMenuOpen = false;
+  bool _categoriesNavHovered = false;
+  bool _megaMenuPanelHovered = false;
   List<MegaMenuCategory> _megaMenu = [];
   OverlayEntry? _megaMenuOverlay;
+  Timer? _megaMenuCloseTimer;
 
   @override
   void didChangeDependencies() {
@@ -36,6 +41,7 @@ class _AppNavbarState extends State<AppNavbar> {
 
   @override
   void dispose() {
+    _megaMenuCloseTimer?.cancel();
     _removeMegaMenuOverlay();
     super.dispose();
   }
@@ -54,8 +60,62 @@ class _AppNavbarState extends State<AppNavbar> {
 
   void _closeMegaMenu() {
     if (!_megaMenuOpen) return;
+    _categoriesNavHovered = false;
+    _megaMenuPanelHovered = false;
     setState(() => _megaMenuOpen = false);
     _removeMegaMenuOverlay();
+  }
+
+  void _openMegaMenu() {
+    _megaMenuCloseTimer?.cancel();
+    if (!_megaMenuOpen) {
+      setState(() => _megaMenuOpen = true);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _megaMenuOpen) _showMegaMenuOverlay();
+      });
+    } else if (_megaMenuOverlay == null) {
+      _showMegaMenuOverlay();
+    }
+  }
+
+  void _onCategoriesNavEnter() {
+    _categoriesNavHovered = true;
+    _megaMenuCloseTimer?.cancel();
+    _openMegaMenu();
+  }
+
+  void _onCategoriesNavExit() {
+    _categoriesNavHovered = false;
+    _scheduleCloseMegaMenuIfNeeded();
+  }
+
+  void _onMegaMenuPanelEnter() {
+    _megaMenuPanelHovered = true;
+    _megaMenuCloseTimer?.cancel();
+    _openMegaMenu();
+  }
+
+  void _onMegaMenuPanelExit() {
+    _megaMenuPanelHovered = false;
+    _scheduleCloseMegaMenuIfNeeded();
+  }
+
+  void _scheduleCloseMegaMenuIfNeeded() {
+    if (_categoriesNavHovered || _megaMenuPanelHovered) return;
+    _scheduleCloseMegaMenu();
+  }
+
+  void _scheduleCloseMegaMenu() {
+    _megaMenuCloseTimer?.cancel();
+    _megaMenuCloseTimer = Timer(const Duration(milliseconds: 350), () {
+      if (mounted && !_categoriesNavHovered && !_megaMenuPanelHovered) {
+        _closeMegaMenu();
+      }
+    });
+  }
+
+  void _cancelCloseMegaMenu() {
+    _megaMenuCloseTimer?.cancel();
   }
 
   void _toggleMegaMenu() {
@@ -88,38 +148,44 @@ class _AppNavbarState extends State<AppNavbar> {
 
   Widget _buildMegaMenuOverlay(BuildContext context) {
     final top = _navBottomY();
+    const bridgeHeight = 20.0;
 
     return Stack(
       children: [
-        Positioned.fill(
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: _closeMegaMenu,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              color: Colors.black.withValues(alpha: _megaMenuOpen ? 0.35 : 0),
-            ),
-          ),
-        ),
+        // Dim backdrop — only below the navbar so the trigger link stays hoverable.
         Positioned(
           top: top,
           left: 0,
           right: 0,
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: _megaMenuOpen ? 1 : 0),
-            duration: const Duration(milliseconds: 280),
-            curve: Curves.easeOutCubic,
-            builder: (context, value, child) => Transform.translate(
-              offset: Offset(0, -12 * (1 - value)),
-              child: Opacity(opacity: value, child: child),
-            ),
-            child: Material(
-              elevation: 12,
-              color: AppColors.white,
-              child: MegaMenuOverlay(
-                categories: _megaMenu,
-                onClose: _closeMegaMenu,
-              ),
+          bottom: 0,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _closeMegaMenu,
+            child: ColoredBox(color: Colors.black.withValues(alpha: 0.35)),
+          ),
+        ),
+        // Menu + invisible bridge overlapping the navbar bottom edge.
+        Positioned(
+          top: top - bridgeHeight,
+          left: 0,
+          right: 0,
+          child: MouseRegion(
+            onEnter: (_) => _onMegaMenuPanelEnter(),
+            onExit: (_) => _onMegaMenuPanelExit(),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(height: bridgeHeight),
+                Material(
+                  elevation: 12,
+                  color: AppColors.white,
+                  child: MegaMenuOverlay(
+                    categories: _megaMenu,
+                    onClose: _closeMegaMenu,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -146,7 +212,7 @@ class _AppNavbarState extends State<AppNavbar> {
             children: [
               if (isMobile)
                 IconButton(
-                  icon: Icon(_mobileMenuOpen ? Icons.close : Icons.menu),
+                  icon: Icon(_mobileMenuOpen ? Icons.close : Icons.menu, color: AppColors.black),
                   onPressed: () => setState(() => _mobileMenuOpen = !_mobileMenuOpen),
                 ),
               GestureDetector(
@@ -161,12 +227,11 @@ class _AppNavbarState extends State<AppNavbar> {
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [AppColors.navy, AppColors.primary],
-                        ),
+                        color: AppColors.black,
                         borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.gold.withValues(alpha: 0.4)),
                       ),
-                      child: const Icon(Icons.shield_outlined, color: Colors.white, size: 24),
+                      child: const Icon(Icons.shield_outlined, color: AppColors.gold, size: 24),
                     ),
                     const SizedBox(width: 12),
                     Column(
@@ -176,14 +241,14 @@ class _AppNavbarState extends State<AppNavbar> {
                           AppStrings.brand,
                           style: Theme.of(context).textTheme.titleLarge?.copyWith(
                                 fontWeight: FontWeight.w800,
-                                color: AppColors.navy,
+                                color: AppColors.black,
                               ),
                         ),
                         if (!isMobile)
                           Text(
                             AppStrings.brandTagline,
                             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                  color: AppColors.textMuted,
+                                  color: AppColors.textSecondary,
                                   fontSize: 11,
                                 ),
                           ),
@@ -218,12 +283,9 @@ class _AppNavbarState extends State<AppNavbar> {
                       context.go(path);
                     },
                     itemBuilder: (_) => [
-                      const PopupMenuItem(value: '/account/orders', child: Text(AppStrings.myOrders)),
-                      const PopupMenuItem(value: '/account/profile', child: Text(AppStrings.myProfile)),
-                      const PopupMenuItem(value: '/account/addresses', child: Text(AppStrings.myAddresses)),
-                      const PopupMenuItem(value: '/account/wishlist', child: Text(AppStrings.myWishlist)),
+                      const PopupMenuItem(value: '/account', child: Text(AppStrings.userDashboard)),
+                      const PopupMenuItem(value: '/account/profile', child: Text(AppStrings.userProfile)),
                       const PopupMenuItem(value: '/account/tickets', child: Text(AppStrings.myTickets)),
-                      const PopupMenuItem(value: '/account/notifications', child: Text(AppStrings.notifications)),
                     ],
                   ),
                 _ActionButton(
@@ -256,32 +318,36 @@ class _AppNavbarState extends State<AppNavbar> {
                       cart.toggleCart();
                     },
                   ),
-                  PositionedDirectional(
-                    end: 2,
-                    top: 2,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: AppColors.accent,
-                        shape: BoxShape.circle,
-                      ),
-                      constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-                      child: Text(
-                        '${cart.itemCount}',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                  if (cart.itemCount > 0)
+                    PositionedDirectional(
+                      end: 2,
+                      top: 2,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: AppColors.gold,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                        child: Text(
+                          '${cart.itemCount}',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: AppColors.textOnGold,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ],
           ),
         ),
         Container(
-          decoration: BoxDecoration(
-            color: AppColors.white,
-            border: Border(bottom: BorderSide(color: AppColors.border.withValues(alpha: 0.8))),
+          decoration: const BoxDecoration(
+            color: AppColors.black,
           ),
           padding: EdgeInsets.symmetric(horizontal: padding),
           child: isMobile && _mobileMenuOpen
@@ -294,12 +360,21 @@ class _AppNavbarState extends State<AppNavbar> {
                       active: currentPath == '/',
                       onBeforeNavigate: _closeMegaMenu,
                     ),
-                    _NavItem(
-                      label: AppStrings.categories,
-                      active: _megaMenuOpen,
-                      icon: Icons.menu,
-                      onTap: _toggleMegaMenu,
-                    ),
+                    if (isMobile)
+                      _NavItem(
+                        label: AppStrings.categories,
+                        active: _megaMenuOpen,
+                        icon: Icons.menu,
+                        onTap: _toggleMegaMenu,
+                      )
+                    else
+                      _CategoriesNavItem(
+                        label: AppStrings.categories,
+                        active: _megaMenuOpen,
+                        onOpen: _onCategoriesNavEnter,
+                        onClose: _onCategoriesNavExit,
+                        onCancelClose: _cancelCloseMegaMenu,
+                      ),
                     _NavItem(
                       label: AppStrings.smartCatalog,
                       path: '/smart-catalog',
@@ -332,31 +407,115 @@ class _AppNavbarState extends State<AppNavbar> {
   }
 }
 
-class _ActionButton extends StatelessWidget {
+class _CategoriesNavItem extends StatefulWidget {
+  const _CategoriesNavItem({
+    required this.label,
+    required this.active,
+    required this.onOpen,
+    required this.onClose,
+    required this.onCancelClose,
+  });
+
+  final String label;
+  final bool active;
+  final VoidCallback onOpen;
+  final VoidCallback onClose;
+  final VoidCallback onCancelClose;
+
+  @override
+  State<_CategoriesNavItem> createState() => _CategoriesNavItemState();
+}
+
+class _CategoriesNavItemState extends State<_CategoriesNavItem> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final highlighted = widget.active || _hovered;
+    final textColor = highlighted ? AppColors.gold : AppColors.textOnDark.withValues(alpha: 0.85);
+    final underlineColor =
+        widget.active ? AppColors.gold : (_hovered ? AppColors.gold.withValues(alpha: 0.6) : Colors.transparent);
+
+    return MouseRegion(
+      onEnter: (_) {
+        setState(() => _hovered = true);
+        widget.onCancelClose();
+        widget.onOpen();
+      },
+      onExit: (_) {
+        setState(() => _hovered = false);
+        widget.onClose();
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(color: underlineColor, width: 2.5),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.menu, size: 18, color: textColor),
+            const SizedBox(width: 6),
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 220),
+              style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                    color: textColor,
+                    fontWeight: widget.active ? FontWeight.w600 : FontWeight.w400,
+                  ),
+              child: Text(widget.label),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionButton extends StatefulWidget {
   const _ActionButton({required this.icon, required this.onTap, this.tooltip});
   final IconData icon;
   final VoidCallback onTap;
   final String? tooltip;
 
   @override
+  State<_ActionButton> createState() => _ActionButtonState();
+}
+
+class _ActionButtonState extends State<_ActionButton> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsetsDirectional.only(end: 6),
       child: Tooltip(
-        message: tooltip ?? '',
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                border: Border.all(color: AppColors.border),
-                borderRadius: BorderRadius.circular(12),
+        message: widget.tooltip ?? '',
+        child: MouseRegion(
+          onEnter: (_) => setState(() => _hovered = true),
+          onExit: (_) => setState(() => _hovered = false),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: widget.onTap,
+              borderRadius: BorderRadius.circular(12),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  border: Border.all(color: _hovered ? AppColors.gold : AppColors.border),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  widget.icon,
+                  size: 22,
+                  color: _hovered ? AppColors.gold : AppColors.black,
+                ),
               ),
-              child: Icon(icon, size: 22, color: AppColors.textPrimary),
             ),
           ),
         ),
@@ -365,7 +524,7 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
-class _NavItem extends StatelessWidget {
+class _NavItem extends StatefulWidget {
   const _NavItem({
     required this.label,
     this.path,
@@ -383,40 +542,55 @@ class _NavItem extends StatelessWidget {
   final VoidCallback? onBeforeNavigate;
 
   @override
+  State<_NavItem> createState() => _NavItemState();
+}
+
+class _NavItemState extends State<_NavItem> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap ??
-          (path != null
-              ? () {
-                  onBeforeNavigate?.call();
-                  context.go(path!);
-                }
-              : null),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              color: active ? AppColors.primary : Colors.transparent,
-              width: 2.5,
+    final highlighted = widget.active || _hovered;
+    final textColor = highlighted ? AppColors.gold : AppColors.textOnDark.withValues(alpha: 0.85);
+    final underlineColor = widget.active ? AppColors.gold : (_hovered ? AppColors.gold.withValues(alpha: 0.6) : Colors.transparent);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: InkWell(
+        onTap: widget.onTap ??
+            (widget.path != null
+                ? () {
+                    widget.onBeforeNavigate?.call();
+                    context.go(widget.path!);
+                  }
+                : null),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: underlineColor, width: 2.5),
             ),
           ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) ...[
-              Icon(icon, size: 18, color: active ? AppColors.primary : AppColors.textSecondary),
-              const SizedBox(width: 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (widget.icon != null) ...[
+                Icon(widget.icon, size: 18, color: textColor),
+                const SizedBox(width: 6),
+              ],
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 220),
+                style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                      color: textColor,
+                      fontWeight: widget.active ? FontWeight.w600 : FontWeight.w400,
+                    ),
+                child: Text(widget.label),
+              ),
             ],
-            Text(
-              label,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: active ? AppColors.primary : AppColors.textSecondary,
-                    fontWeight: active ? FontWeight.w600 : FontWeight.w400,
-                  ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -435,7 +609,7 @@ class _MobileNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 16, top: 8),
       child: Column(
         children: [
           LiveSearchBar(compact: true, onNavigate: onNavigate),
@@ -452,7 +626,9 @@ class _MobileNav extends StatelessWidget {
                 (AppStrings.contact, '/contact'),
               ])
                 ActionChip(
-                  label: Text(label),
+                  label: Text(label, style: TextStyle(color: currentPath == path ? AppColors.textOnGold : AppColors.textOnDark)),
+                  backgroundColor: currentPath == path ? AppColors.gold : AppColors.blackLight,
+                  side: BorderSide(color: currentPath == path ? AppColors.gold : AppColors.blackLight),
                   onPressed: () => context.go(path),
                 ),
             ],

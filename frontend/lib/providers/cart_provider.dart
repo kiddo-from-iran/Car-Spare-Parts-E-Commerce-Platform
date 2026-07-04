@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/app_strings.dart';
-import '../providers/toast_provider.dart';
-
 import '../models/product.dart';
+import '../providers/toast_provider.dart';
+import '../utils/product_stock.dart';
 
 class CartProvider extends ChangeNotifier {
   CartProvider(this._toast);
@@ -33,7 +33,15 @@ class CartProvider extends ChangeNotifier {
   }
 
   void addItem(Product product, {String? color, String? size}) {
-    if (!product.inStock) return;
+    if (!product.canPurchase) {
+      _toast.error(AppStrings.outOfStock);
+      return;
+    }
+    if (!canAddProductToCart(product, _items)) {
+      _toast.error(AppStrings.stockMaxInCart);
+      return;
+    }
+
     final selectedColor = color ?? product.colors.first;
     final selectedSize = size ?? product.sizes.first;
     final index = _items.indexWhere(
@@ -44,7 +52,12 @@ class CartProvider extends ChangeNotifier {
     );
 
     if (index >= 0) {
-      _items[index] = _items[index].copyWith(quantity: _items[index].quantity + 1);
+      final current = _items[index];
+      if (!canIncreaseCartQuantity(current, _items)) {
+        _toast.error(AppStrings.stockMaxInCart);
+        return;
+      }
+      _items[index] = current.copyWith(quantity: current.quantity + 1);
     } else {
       _items.add(CartItem(
         product: product,
@@ -64,12 +77,20 @@ class CartProvider extends ChangeNotifier {
       removeItem(item);
       return;
     }
+    final maxQty = maxPurchasableQuantity(item.product, _items, exclude: item) + item.quantity;
+    final nextQty = quantity > maxQty ? maxQty : quantity;
+    if (nextQty < quantity) {
+      _toast.error(AppStrings.stockInsufficient);
+    }
     final index = _items.indexOf(item);
     if (index >= 0) {
-      _items[index] = item.copyWith(quantity: quantity);
+      _items[index] = item.copyWith(quantity: nextQty);
       notifyListeners();
     }
   }
+
+  int maxQuantityFor(CartItem item) =>
+      maxPurchasableQuantity(item.product, _items, exclude: item) + item.quantity;
 
   void removeItem(CartItem item) {
     _items.remove(item);

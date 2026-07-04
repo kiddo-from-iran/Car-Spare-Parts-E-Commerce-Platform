@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../l10n/app_strings.dart';
 import '../../models/order.dart';
 import '../../providers/toast_provider.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/admin/admin_data_table.dart';
+import '../../widgets/admin/admin_page_scaffold.dart';
 
 class AdminOrdersPage extends StatefulWidget {
   const AdminOrdersPage({super.key});
@@ -15,15 +18,27 @@ class AdminOrdersPage extends StatefulWidget {
 }
 
 class _AdminOrdersPageState extends State<AdminOrdersPage> {
-  String _filter = 'active';
   List<Order> _orders = [];
   List<OrderStatusOption> _statuses = [];
   bool _loading = true;
+
+  final _search = TextEditingController();
+  String _query = '';
+  String _statusFilter = '';
+  String _filter = 'all';
+  double? _minPrice;
+  double? _maxPrice;
 
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -44,132 +59,213 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
     if (mounted) setState(() => _loading = false);
   }
 
+  List<Order> get _filtered {
+    final q = _query.trim().toLowerCase();
+    return _orders.where((o) {
+      if (_statusFilter.isNotEmpty && o.status != _statusFilter) return false;
+      if (_minPrice != null && o.total < _minPrice!) return false;
+      if (_maxPrice != null && o.total > _maxPrice!) return false;
+      if (q.isEmpty) return true;
+      final products = o.items.map((i) => i.productName).join(' ');
+      return o.orderNumber.toLowerCase().contains(q) ||
+          o.userName.toLowerCase().contains(q) ||
+          o.userPhone.contains(q) ||
+          o.city.toLowerCase().contains(q) ||
+          o.state.toLowerCase().contains(q) ||
+          products.toLowerCase().contains(q);
+    }).toList();
+  }
+
   Future<void> _updateStatus(Order order, String status) async {
     try {
       await context.read<ApiService>().updateOrderStatus(order.id, status);
-      _load();
-    } catch (e) {
       if (mounted) {
-        context.showError('$e');
+        context.read<ToastProvider>().show('وضعیت سفارش به‌روز شد');
+        _load();
       }
+    } catch (e) {
+      if (mounted) context.showError('$e');
     }
+  }
+
+  Future<void> _deleteOrder(Order order) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('حذف سفارش'),
+        content: Text('آیا از حذف سفارش ${order.orderNumber} مطمئن هستید؟'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text(AppStrings.cancel)),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            child: const Text('حذف'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await context.read<ApiService>().deleteOrder(order.id);
+      if (mounted) {
+        context.read<ToastProvider>().show('سفارش حذف شد');
+        _load();
+      }
+    } catch (e) {
+      if (mounted) context.showError('$e');
+    }
+  }
+
+  void _showDetails(Order order) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('سفارش ${order.orderNumber}'),
+        content: SizedBox(
+          width: 480,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${order.userName} · ${order.userPhone}'),
+                Text('${order.city}، ${order.state}'),
+                Text(order.address),
+                const Divider(),
+                for (final item in order.items)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Text('${item.productName} × ${item.quantity} — ${AppStrings.formatPrice(item.lineTotal)}'),
+                  ),
+                const Divider(),
+                Text('${AppStrings.total}: ${AppStrings.formatPrice(order.total)}', style: const TextStyle(fontWeight: FontWeight.w700)),
+              ],
+            ),
+          ),
+        ),
+        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('بستن'))],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
+    final filtered = _filtered;
+    const columns = [
+      AdminTableColumn(label: 'ردیف', flex: 1, minWidth: 50, align: TextAlign.center),
+      AdminTableColumn(label: 'شماره سفارش', flex: 2, minWidth: 120),
+      AdminTableColumn(label: 'مشتری', flex: 2, minWidth: 120),
+      AdminTableColumn(label: 'محصولات', flex: 3, minWidth: 140),
+      AdminTableColumn(label: 'مبلغ', flex: 2, minWidth: 100),
+      AdminTableColumn(label: 'تاریخ', flex: 2, minWidth: 100),
+      AdminTableColumn(label: 'وضعیت', flex: 2, minWidth: 140),
+      AdminTableColumn(label: 'عملیات', flex: 3, minWidth: 160, align: TextAlign.center),
+    ];
+
+    final rows = filtered.asMap().entries.map((entry) {
+      final i = entry.key;
+      final o = entry.value;
+      final productSummary = o.items.map((e) => e.productName).take(2).join('، ');
+      return [
+        Text('${i + 1}', textAlign: TextAlign.center),
+        Text(o.orderNumber, style: const TextStyle(fontWeight: FontWeight.w600)),
+        Text('${o.userName}\n${o.userPhone}', style: const TextStyle(fontSize: 12)),
+        Text(productSummary, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
+        Text(AppStrings.formatPrice(o.total)),
+        Text(o.createdAt.split('T').first, style: const TextStyle(fontSize: 12)),
+        SizedBox(
+          width: 150,
+          child: DropdownButtonFormField<String>(
+            value: o.status,
+            isExpanded: true,
+            decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 4)),
+            items: _statuses.map((s) => DropdownMenuItem(value: s.value, child: Text(s.label, style: const TextStyle(fontSize: 12)))).toList(),
+            onChanged: (v) {
+              if (v != null) _updateStatus(o, v);
+            },
+          ),
+        ),
+        Wrap(
+          spacing: 0,
+          children: [
+            IconButton(tooltip: 'جزئیات', onPressed: () => _showDetails(o), icon: const Icon(Icons.visibility_outlined, size: 20)),
+            IconButton(
+              tooltip: 'تماس',
+              onPressed: () => launchUrl(Uri.parse('tel:${o.userPhone}')),
+              icon: const Icon(Icons.phone_outlined, size: 20),
+            ),
+            IconButton(tooltip: 'حذف', onPressed: () => _deleteOrder(o), icon: Icon(Icons.delete_outline, size: 20, color: AppColors.error)),
+          ],
+        ),
+      ];
+    }).toList();
+
+    return AdminPageScaffold(
+      title: AppStrings.adminOrders,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(AppStrings.adminOrders, style: Theme.of(context).textTheme.headlineSmall),
-          const SizedBox(height: 16),
+          AdminSearchBar(
+            controller: _search,
+            hint: 'جستجو: شماره سفارش، مشتری، محصول، شهر...',
+            onChanged: (v) => setState(() => _query = v),
+          ),
+          const SizedBox(height: 12),
           Wrap(
             spacing: 8,
+            runSpacing: 8,
             children: [
-              _FilterChip(label: AppStrings.activeOrders, value: 'active', group: _filter, onSelect: (v) {
-                _filter = v;
-                _load();
-              }),
-              _FilterChip(label: AppStrings.completedOrders, value: 'completed', group: _filter, onSelect: (v) {
-                _filter = v;
-                _load();
-              }),
-              _FilterChip(label: AppStrings.allOrders, value: 'all', group: _filter, onSelect: (v) {
-                _filter = v;
-                _load();
-              }),
+              _chip('همه', 'all'),
+              _chip(AppStrings.activeOrders, 'active'),
+              _chip(AppStrings.completedOrders, 'completed'),
+              DropdownButton<String>(
+                hint: const Text('وضعیت'),
+                value: _statusFilter.isEmpty ? null : _statusFilter,
+                items: [
+                  const DropdownMenuItem(value: '', child: Text('همه وضعیت‌ها')),
+                  ..._statuses.map((s) => DropdownMenuItem(value: s.value, child: Text(s.label))),
+                ],
+                onChanged: (v) => setState(() => _statusFilter = v ?? ''),
+              ),
+              SizedBox(
+                width: 120,
+                child: TextField(
+                  decoration: const InputDecoration(labelText: 'حداقل قیمت', isDense: true),
+                  keyboardType: TextInputType.number,
+                  onChanged: (v) => setState(() => _minPrice = double.tryParse(v)),
+                ),
+              ),
+              SizedBox(
+                width: 120,
+                child: TextField(
+                  decoration: const InputDecoration(labelText: 'حداکثر قیمت', isDense: true),
+                  keyboardType: TextInputType.number,
+                  onChanged: (v) => setState(() => _maxPrice = double.tryParse(v)),
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 24),
-          if (_loading)
-            const Center(child: CircularProgressIndicator(strokeWidth: 2))
-          else if (_orders.isEmpty)
-            Text(AppStrings.noOrders, style: TextStyle(color: AppColors.textMuted))
-          else
-            Expanded(
-              child: ListView.separated(
-                itemCount: _orders.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final order = _orders[index];
-                  return Card(
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      side: const BorderSide(color: AppColors.border),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(order.orderNumber, style: const TextStyle(fontWeight: FontWeight.w600)),
-                                    Text('${order.userName} · ${order.userPhone}'),
-                                    Text(AppStrings.formatPrice(order.total)),
-                                  ],
-                                ),
-                              ),
-                              Chip(label: Text(order.statusLabel)),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Text('${AppStrings.changeStatus}:'),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: DropdownButtonFormField<String>(
-                                  value: order.status,
-                                  decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
-                                  items: _statuses
-                                      .map((s) => DropdownMenuItem(value: s.value, child: Text(s.label)))
-                                      .toList(),
-                                  onChanged: (v) {
-                                    if (v != null) _updateStatus(order, v);
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: AdminDataTable(
+              columns: columns,
+              rows: rows,
+              loading: _loading,
+              emptyMessage: AppStrings.noOrders,
             ),
+          ),
         ],
       ),
     );
   }
-}
 
-class _FilterChip extends StatelessWidget {
-  const _FilterChip({
-    required this.label,
-    required this.value,
-    required this.group,
-    required this.onSelect,
-  });
-
-  final String label;
-  final String value;
-  final String group;
-  final ValueChanged<String> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _chip(String label, String value) {
     return ChoiceChip(
       label: Text(label),
-      selected: group == value,
-      onSelected: (_) => onSelect(value),
+      selected: _filter == value,
+      onSelected: (_) {
+        setState(() => _filter = value);
+        _load();
+      },
     );
   }
 }

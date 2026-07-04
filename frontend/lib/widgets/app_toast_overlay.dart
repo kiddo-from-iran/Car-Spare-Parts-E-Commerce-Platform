@@ -207,7 +207,7 @@ class _ToastCardState extends State<_ToastCard> with TickerProviderStateMixin {
       ToastType.success => AppColors.success,
       ToastType.error => AppColors.error,
       ToastType.warning => AppColors.warning,
-      ToastType.info => AppColors.accent,
+      ToastType.info => AppColors.gold,
     };
   }
 

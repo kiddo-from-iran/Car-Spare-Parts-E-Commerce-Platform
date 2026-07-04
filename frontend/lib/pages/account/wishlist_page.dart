@@ -6,8 +6,9 @@ import '../../models/product.dart';
 import '../../providers/wishlist_provider.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/app_loading_indicator.dart';
 import '../../widgets/product_card.dart';
-import 'account_shell.dart';
+import 'account_page_scaffold.dart';
 
 class WishlistPage extends StatefulWidget {
   const WishlistPage({super.key});
@@ -51,10 +52,11 @@ class _WishlistPageState extends State<WishlistPage> {
 
   @override
   Widget build(BuildContext context) {
-    return AccountPageShell(
+    return AccountPageScaffold(
       title: AppStrings.myWishlist,
+      scrollable: true,
       child: _loading
-          ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+          ? const AppLoadingCenter()
           : _products.isEmpty
               ? Center(
                   child: Text('لیست علاقه‌مندی‌ها خالی است', style: TextStyle(color: AppColors.textMuted)),
@@ -75,8 +77,9 @@ class NotificationsPage extends StatelessWidget {
       ('موجود شد', 'لنت ترمز پژو ۴۰۵ موجود شد', '۳ روز پیش', Icons.inventory_2_outlined),
     ];
 
-    return AccountPageShell(
+    return AccountPageScaffold(
       title: AppStrings.notifications,
+      scrollable: true,
       child: ListView.separated(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
@@ -96,10 +99,10 @@ class NotificationsPage extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: AppColors.accentLight,
+                    color: AppColors.gold.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(icon, color: AppColors.primary, size: 22),
+                  child: Icon(icon, color: AppColors.gold, size: 22),
                 ),
                 const SizedBox(width: 16),
                 Expanded(

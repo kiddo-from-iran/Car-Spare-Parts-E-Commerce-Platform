@@ -357,6 +357,14 @@ class ApiService {
     return Order.fromJson((await _handle(response)) as Map<String, dynamic>);
   }
 
+  Future<void> deleteOrder(int orderId) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/api/admin/orders/$orderId'),
+      headers: _headers,
+    );
+    await _handle(response);
+  }
+
   Future<RevenueSummary> getRevenueSummary({int months = 6}) async {
     final response = await http.get(
       Uri.parse('$baseUrl/api/admin/orders/revenue/summary?months=$months'),
@@ -500,5 +508,51 @@ class ApiService {
         .replace(queryParameters: {'view_id': viewId});
     final response = await http.get(uri);
     return CatalogHotspotProduct.fromJson((await _handle(response)) as Map<String, dynamic>);
+  }
+
+  // Admin catalogs
+  Future<List<AdminCatalogSummary>> getAdminCatalogs() async {
+    final response = await http.get(Uri.parse('$baseUrl/api/admin/catalogs'), headers: _headers);
+    final list = (await _handle(response)) as List;
+    return list.map((e) => AdminCatalogSummary.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<AdminCatalogDetail> getAdminCatalog(String id) async {
+    final response = await http.get(Uri.parse('$baseUrl/api/admin/catalogs/$id'), headers: _headers);
+    return AdminCatalogDetail.fromJson((await _handle(response)) as Map<String, dynamic>);
+  }
+
+  Future<AdminCatalogDetail> saveAdminCatalog(Map<String, dynamic> data, {String? id}) async {
+    final uri = id != null
+        ? Uri.parse('$baseUrl/api/admin/catalogs/$id')
+        : Uri.parse('$baseUrl/api/admin/catalogs');
+    final response = id != null
+        ? await http.put(uri, headers: _headers, body: json.encode(data))
+        : await http.post(uri, headers: _headers, body: json.encode(data));
+    return AdminCatalogDetail.fromJson((await _handle(response)) as Map<String, dynamic>);
+  }
+
+  Future<void> deleteAdminCatalog(String id) async {
+    final response = await http.delete(Uri.parse('$baseUrl/api/admin/catalogs/$id'), headers: _headers);
+    await _handle(response);
+  }
+
+  Future<String> uploadCatalogImage(List<int> bytes, String filename) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/api/admin/catalogs/upload-image'),
+    );
+    if (token != null) request.headers['Authorization'] = 'Bearer $token';
+    request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
+    final result = (await _handle(response)) as Map<String, dynamic>;
+    return result['url'] as String;
+  }
+
+  String resolveMediaUrl(String source) {
+    if (source.startsWith('http://') || source.startsWith('https://')) return source;
+    if (source.startsWith('/')) return '$baseUrl$source';
+    return source;
   }
 }

@@ -37,7 +37,7 @@ class _LoginPageState extends State<LoginPage> {
       if (!mounted) return;
       context.showSuccess(AppStrings.toastLoginSuccess);
       final auth = context.read<AuthProvider>();
-      context.go(auth.isAdmin ? '/admin/orders' : '/account/orders');
+      context.go(auth.isAdmin ? '/admin' : '/account');
     } catch (e) {
       final msg = e.toString().replaceFirst('Exception: ', '');
       setState(() => _error = msg);
@@ -163,7 +163,7 @@ class _RegisterPageState extends State<RegisterPage> {
           );
       if (!mounted) return;
       context.showSuccess(AppStrings.toastRegisterSuccess);
-      context.go('/account/orders');
+      context.go('/account');
     } catch (e) {
       final msg = e.toString().replaceFirst('Exception: ', '');
       setState(() => _error = msg);

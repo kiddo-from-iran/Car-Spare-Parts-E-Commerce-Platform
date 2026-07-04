@@ -143,7 +143,7 @@ class _CategoryCarouselState extends State<CategoryCarousel> {
                 start: 4,
                 top: itemWidth * 0.35,
                 child: _NavCircle(
-                  icon: Icons.chevron_right,
+                  icon: Icons.chevron_left,
                   enabled: _currentPage > 0,
                   onTap: _prevPage,
                 ),
@@ -152,7 +152,7 @@ class _CategoryCarouselState extends State<CategoryCarousel> {
                 end: 4,
                 top: itemWidth * 0.35,
                 child: _NavCircle(
-                  icon: Icons.chevron_left,
+                  icon: Icons.chevron_right,
                   enabled: _currentPage < pageCount - 1,
                   onTap: () => _nextPage(pageCount),
                 ),
@@ -173,7 +173,7 @@ class _CategoryCarouselState extends State<CategoryCarousel> {
                   width: active ? 22 : 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: active ? AppColors.primary : AppColors.border,
+                    color: active ? AppColors.gold : AppColors.border,
                     borderRadius: BorderRadius.circular(4),
                   ),
                 );
@@ -233,14 +233,10 @@ class _CategoryCircleState extends State<_CategoryCircle> {
               child: ClipOval(
                 child: Padding(
                   padding: EdgeInsets.all(widget.large ? 14 : 10),
-                  child: CachedNetworkImage(
-                    imageUrl: widget.imageUrl,
-                    fit: BoxFit.contain,
-                    errorWidget: (_, __, ___) => Icon(
-                      widget.large ? Icons.directions_car_outlined : Icons.build_outlined,
-                      size: circleSize * 0.38,
-                      color: AppColors.primary,
-                    ),
+                  child: _CategoryImage(
+                    source: widget.imageUrl,
+                    circleSize: circleSize,
+                    large: widget.large,
                   ),
                 ),
               ),
@@ -261,6 +257,37 @@ class _CategoryCircleState extends State<_CategoryCircle> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _CategoryImage extends StatelessWidget {
+  const _CategoryImage({
+    required this.source,
+    required this.circleSize,
+    required this.large,
+  });
+
+  final String source;
+  final double circleSize;
+  final bool large;
+
+  @override
+  Widget build(BuildContext context) {
+    final fallback = Icon(
+      large ? Icons.directions_car_outlined : Icons.build_outlined,
+      size: circleSize * 0.38,
+      color: AppColors.gold,
+    );
+
+    if (source.startsWith('assets/')) {
+      return Image.asset(source, fit: BoxFit.contain, errorBuilder: (_, __, ___) => fallback);
+    }
+
+    return CachedNetworkImage(
+      imageUrl: source,
+      fit: BoxFit.contain,
+      errorWidget: (_, __, ___) => fallback,
     );
   }
 }

@@ -1,15 +1,18 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../l10n/app_strings.dart';
+import '../../models/product.dart';
 import '../../models/smart_catalog.dart';
 import '../../providers/cart_provider.dart';
-import '../../providers/toast_provider.dart';
 import '../../providers/wishlist_provider.dart';
+import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/product_card.dart';
+import '../../theme/responsive.dart';
+import '../../utils/product_stock.dart';
+import '../../widgets/app_loading_indicator.dart';
+import '../../widgets/product_specs_table.dart';
 
 class CatalogProductPanel extends StatelessWidget {
   const CatalogProductPanel({
@@ -18,17 +21,19 @@ class CatalogProductPanel extends StatelessWidget {
     required this.loading,
     required this.vehicleName,
     this.compact = false,
+    this.showSpecsTable = true,
   });
 
   final CatalogHotspotProduct? data;
   final bool loading;
   final String vehicleName;
   final bool compact;
+  final bool showSpecsTable;
 
   @override
   Widget build(BuildContext context) {
     if (loading) {
-      return const Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold));
+      return const AppLoadingCenter(size: 72);
     }
 
     final item = data;
@@ -44,7 +49,7 @@ class CatalogProductPanel extends StatelessWidget {
               Text(
                 AppStrings.catalogClickHint,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.7), height: 1.5),
+                style: TextStyle(color: AppColors.textSecondary, height: 1.5),
               ),
             ],
           ),
@@ -52,132 +57,203 @@ class CatalogProductPanel extends StatelessWidget {
       );
     }
 
-    final product = item.product;
-    final wishlist = context.watch<WishlistProvider>();
-    final inWishlist = wishlist.isWishlisted(product.id);
+    final products = item.allProducts;
 
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(compact ? 16 : 20),
+    return Padding(
+      padding: EdgeInsets.all(compact ? 16 : 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             item.hotspot.label,
-            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          GestureDetector(
-            onTap: () => _showZoom(context, product.images.first),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: AspectRatio(
-                aspectRatio: 1.2,
-                child: CachedNetworkImage(
-                  imageUrl: product.images.first,
-                  fit: BoxFit.cover,
-                  placeholder: (_, __) => ColoredBox(
-                    color: AppColors.catalogPanel,
-                    child: const Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold)),
-                  ),
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: AppColors.black,
+                  fontWeight: FontWeight.bold,
                 ),
-              ),
-            ),
           ),
-          const SizedBox(height: 16),
-          _InfoTable(
-            rows: [
-              (AppStrings.partNumber, item.partNumber),
-              (AppStrings.productBrand, product.brand),
-              ('خودرو', vehicleName),
-              ('موقعیت', item.hotspot.label),
-              (AppStrings.manufacturer, product.brand),
-              (AppStrings.country, product.manufacturerCountry),
-              (AppStrings.material, item.material),
-              (AppStrings.weight, '${item.weightGrams} ${AppStrings.grams}'),
-              (AppStrings.warranty, item.warranty),
-              (AppStrings.availability, product.inStock ? AppStrings.inStock : AppStrings.outOfStock),
-              (AppStrings.price, AppStrings.formatPrice(product.price)),
-              if (product.hasDiscount) ('تخفیف', '${product.discountPercent.toStringAsFixed(0)}٪'),
-              ('دسته‌بندی', product.partCategory.isNotEmpty ? product.partCategory : product.category),
-            ],
-            stockIn: product.inStock,
-            priceHighlight: true,
-          ),
-          if (product.description.isNotEmpty) ...[
-            const SizedBox(height: 16),
+          if (products.length > 1) ...[
+            const SizedBox(height: 8),
             Text(
-              product.description,
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.75), height: 1.6, fontSize: 13),
+              '${products.length} محصول مرتبط با این نقطه',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
             ),
           ],
           const SizedBox(height: 20),
-          FilledButton.icon(
-            onPressed: product.inStock
-                ? () {
-                    context.read<CartProvider>().addItem(product);
-                    context.read<ToastProvider>().show(AppStrings.addToCart);
-                  }
-                : null,
-            icon: const Icon(Icons.shopping_cart_outlined),
-            label: const Text(AppStrings.addToCart),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.gold,
-              foregroundColor: AppColors.textPrimary,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => context.go('/product/${product.id}'),
-                  icon: const Icon(Icons.open_in_new, size: 18),
-                  label: const Text(AppStrings.viewProduct),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
+          ...products.asMap().entries.map((entry) {
+            final index = entry.key;
+            final product = entry.value;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (index > 0) ...[
+                  const SizedBox(height: 24),
+                  Divider(color: AppColors.border, height: 1),
+                  const SizedBox(height: 24),
+                ],
+                _CatalogProductBlock(
+                  item: item,
+                  product: product,
+                  vehicleName: vehicleName,
+                  showSpecsTable: showSpecsTable,
+                  compact: compact,
+                  showProductTitle: products.length > 1,
                 ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                tooltip: AppStrings.addToWishlist,
-                onPressed: () => wishlist.toggle(product.id),
-                icon: Icon(inWishlist ? Icons.favorite : Icons.favorite_border, color: inWishlist ? Colors.redAccent : Colors.white70),
-              ),
-              IconButton(
-                tooltip: AppStrings.share,
-                onPressed: () {},
-                icon: Icon(Icons.share_outlined, color: Colors.white.withValues(alpha: 0.7)),
-              ),
-            ],
-          ),
-          if (item.related.isNotEmpty) ...[
-            const SizedBox(height: 24),
-            Text(
-              AppStrings.relatedProducts,
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: compact ? 260 : 280,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: item.related.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 12),
-                itemBuilder: (context, index) => SizedBox(
-                  width: 180,
-                  child: ProductCard(product: item.related[index]),
-                ),
-              ),
-            ),
-          ],
+              ],
+            );
+          }),
         ],
       ),
     );
+  }
+}
+
+class _CatalogProductBlock extends StatelessWidget {
+  const _CatalogProductBlock({
+    required this.item,
+    required this.product,
+    required this.vehicleName,
+    required this.showSpecsTable,
+    required this.compact,
+    required this.showProductTitle,
+  });
+
+  final CatalogHotspotProduct item;
+  final Product product;
+  final String vehicleName;
+  final bool showSpecsTable;
+  final bool compact;
+  final bool showProductTitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final wishlist = context.watch<WishlistProvider>();
+    final cart = context.watch<CartProvider>();
+    final inWishlist = wishlist.isWishlisted(product.id);
+    final canAdd = canAddProductToCart(product, cart.items);
+    final isPhone = AppResponsive.isPhone(context);
+    const imageSize = 280.0;
+    final imageUrl = _resolveImage(context, product.images.first);
+
+    Widget imageBlock = _ProductImage(
+      imageUrl: imageUrl,
+      size: isPhone ? double.infinity : imageSize,
+      onTap: () => _showZoom(context, imageUrl),
+    );
+
+    Widget specsBlock = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'مشخصات فنی',
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 10),
+        ProductSpecsTable(
+          rows: catalogProductSpecRows(item, product, vehicleName),
+          stockIn: product.canPurchase,
+        ),
+      ],
+    );
+
+    Widget addToCartButton = FilledButton.icon(
+      onPressed: canAdd ? () => context.read<CartProvider>().addItem(product) : null,
+      icon: const Icon(Icons.shopping_cart_outlined, size: 18),
+      label: const Text(AppStrings.addToCart),
+      style: FilledButton.styleFrom(
+        backgroundColor: AppColors.gold,
+        foregroundColor: AppColors.textOnGold,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+
+    Widget imageColumn = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        imageBlock,
+        const SizedBox(height: 12),
+        addToCartButton,
+        const SizedBox(height: 4),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              tooltip: AppStrings.addToWishlist,
+              onPressed: () => wishlist.toggle(product.id),
+              icon: Icon(
+                inWishlist ? Icons.favorite : Icons.favorite_border,
+                color: inWishlist ? AppColors.gold : AppColors.black,
+              ),
+            ),
+            IconButton(
+              tooltip: AppStrings.share,
+              onPressed: () {},
+              icon: const Icon(Icons.share_outlined, color: AppColors.textSecondary),
+            ),
+          ],
+        ),
+      ],
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (showProductTitle) ...[
+          Text(
+            product.name,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.black,
+                ),
+          ),
+          if (product.brand.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              product.brand,
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            ),
+          ],
+          const SizedBox(height: 12),
+        ],
+        if (product.description.isNotEmpty) ...[
+          Text(
+            product.description,
+            style: TextStyle(color: AppColors.textSecondary, height: 1.6, fontSize: 13),
+          ),
+          const SizedBox(height: 16),
+        ],
+        if (showSpecsTable) ...[
+          if (isPhone) ...[
+            imageColumn,
+            const SizedBox(height: 20),
+            specsBlock,
+          ] else
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: specsBlock),
+                const SizedBox(width: 28),
+                SizedBox(width: imageSize, child: imageColumn),
+              ],
+            ),
+        ] else ...[
+          if (!isPhone)
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: SizedBox(width: imageSize, child: imageColumn),
+            )
+          else
+            imageColumn,
+        ],
+      ],
+    );
+  }
+
+  String _resolveImage(BuildContext context, String source) {
+    return context.read<ApiService>().resolveMediaUrl(source);
   }
 
   void _showZoom(BuildContext context, String url) {
@@ -207,69 +283,67 @@ class CatalogProductPanel extends StatelessWidget {
   }
 }
 
-class _InfoTable extends StatelessWidget {
-  const _InfoTable({
-    required this.rows,
-    this.stockIn = true,
-    this.priceHighlight = false,
+class _ProductImage extends StatelessWidget {
+  const _ProductImage({
+    required this.imageUrl,
+    required this.size,
+    required this.onTap,
   });
 
-  final List<(String, String)> rows;
-  final bool stockIn;
-  final bool priceHighlight;
+  final String imageUrl;
+  final double size;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.catalogPanel,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: Column(
-        children: [
-          for (var i = 0; i < rows.length; i++)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                border: i < rows.length - 1
-                    ? Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.06)))
-                    : null,
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      rows[i].$1,
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.55), fontSize: 12),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 3,
-                    child: Text(
-                      rows[i].$2,
-                      textAlign: TextAlign.end,
-                      style: TextStyle(
-                        color: _valueColor(rows[i].$1, stockIn),
-                        fontSize: rows[i].$1 == AppStrings.price ? 15 : 13,
-                        fontWeight: rows[i].$1 == AppStrings.price || rows[i].$1 == AppStrings.availability
-                            ? FontWeight.bold
-                            : FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
+    final isFullWidth = size == double.infinity;
+    final height = isFullWidth ? 240.0 : size;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: isFullWidth ? double.infinity : size,
+        height: height,
+        decoration: BoxDecoration(
+          color: AppColors.surfaceMuted,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(11),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: CachedNetworkImage(
+              imageUrl: imageUrl,
+              fit: BoxFit.contain,
+              placeholder: (_, __) => const Center(
+                child: AppLoadingInline(size: 36),
               ),
             ),
-        ],
+          ),
+        ),
       ),
     );
   }
-
-  Color _valueColor(String label, bool stockIn) {
-    if (label == AppStrings.availability) return stockIn ? AppColors.success : Colors.redAccent;
-    if (label == AppStrings.price && priceHighlight) return AppColors.gold;
-    return Colors.white.withValues(alpha: 0.92);
-  }
 }
+
+List<(String, String)> catalogProductSpecRows(
+  CatalogHotspotProduct item,
+  Product product,
+  String vehicleName,
+) =>
+    [
+      (AppStrings.partNumber, item.partNumber),
+      (AppStrings.productBrand, product.brand),
+      ('خودرو', vehicleName),
+      ('موقعیت', item.hotspot.label),
+      (AppStrings.manufacturer, product.brand),
+      (AppStrings.country, product.manufacturerCountry),
+      (AppStrings.material, item.material),
+      (AppStrings.weight, '${item.weightGrams} ${AppStrings.grams}'),
+      (AppStrings.warranty, item.warranty),
+      (AppStrings.availability, product.availabilityLabel),
+      (AppStrings.price, AppStrings.formatPrice(product.price)),
+      if (product.hasDiscount) ('تخفیف', '${product.discountPercent.toStringAsFixed(0)}٪'),
+      ('دسته‌بندی', product.partCategory.isNotEmpty ? product.partCategory : product.category),
+    ];

@@ -1,8 +1,7 @@
 import uuid
+from collections import defaultdict
 from datetime import datetime
 from typing import Optional
-
-from fastapi import APIRouter, Depends, HTTPException, Query
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -98,15 +97,34 @@ def checkout(data: CheckoutRequest, user: dict = Depends(get_current_user)):
     conn = get_conn()
     subtotal = 0.0
     order_items = []
+    qty_by_product: dict[int, int] = defaultdict(int)
 
     for item in data.items:
-        product = conn.execute("SELECT * FROM products WHERE id = ?", (item.product_id,)).fetchone()
+        if item.quantity <= 0:
+            conn.close()
+            raise HTTPException(status_code=400, detail="تعداد نامعتبر است")
+        qty_by_product[item.product_id] += item.quantity
+
+    products_by_id: dict[int, dict] = {}
+    for product_id, total_qty in qty_by_product.items():
+        product = conn.execute("SELECT * FROM products WHERE id = ?", (product_id,)).fetchone()
         if product is None:
             conn.close()
-            raise HTTPException(status_code=400, detail=f"محصول {item.product_id} یافت نشد")
-        if not product["in_stock"]:
+            raise HTTPException(status_code=400, detail=f"محصول {product_id} یافت نشد")
+        stock = int(product["stock_quantity"] if product["stock_quantity"] is not None else 0)
+        if not product["in_stock"] or stock <= 0:
             conn.close()
             raise HTTPException(status_code=400, detail=f"محصول {product['name']} موجود نیست")
+        if total_qty > stock:
+            conn.close()
+            raise HTTPException(
+                status_code=400,
+                detail=f"موجودی «{product['name']}» کافی نیست. موجود: {stock} عدد",
+            )
+        products_by_id[product_id] = product
+
+    for item in data.items:
+        product = products_by_id[item.product_id]
         line = product["price"] * item.quantity
         subtotal += line
         order_items.append((product, item))
@@ -212,6 +230,15 @@ def checkout(data: CheckoutRequest, user: dict = Depends(get_current_user)):
                 item.size,
                 product["price"],
             ),
+        )
+
+    for product_id, total_qty in qty_by_product.items():
+        product = products_by_id[product_id]
+        current_stock = int(product["stock_quantity"] if product["stock_quantity"] is not None else 0)
+        new_stock = max(current_stock - total_qty, 0)
+        cur.execute(
+            "UPDATE products SET stock_quantity = ?, in_stock = ? WHERE id = ?",
+            (new_stock, 1 if new_stock > 0 else 0, product_id),
         )
 
     if discount_code:
@@ -336,13 +363,27 @@ def update_order_status(order_id: int, data: OrderStatusUpdate, _: dict = Depend
     return order
 
 
+@admin_router.delete("/{order_id}")
+def delete_order(order_id: int, _: dict = Depends(require_admin)):
+    conn = get_conn()
+    row = conn.execute("SELECT id FROM orders WHERE id = ?", (order_id,)).fetchone()
+    if row is None:
+        conn.close()
+        raise HTTPException(status_code=404, detail="سفارش یافت نشد")
+    conn.execute("DELETE FROM order_items WHERE order_id = ?", (order_id,))
+    conn.execute("DELETE FROM orders WHERE id = ?", (order_id,))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
 @admin_router.get("/revenue/summary", response_model=RevenueSummary)
 def revenue_summary(months: int = 6, _: dict = Depends(require_admin)):
     conn = get_conn()
     rows = conn.execute(
         """SELECT strftime('%Y', created_at) as y, strftime('%m', created_at) as m,
            COUNT(*) as cnt, SUM(total) as rev
-           FROM orders WHERE status = 'completed'
+           FROM orders WHERE status = 'delivered'
            GROUP BY y, m ORDER BY y DESC, m DESC LIMIT ?""",
         (months,),
     ).fetchall()

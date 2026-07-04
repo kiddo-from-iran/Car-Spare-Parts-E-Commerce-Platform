@@ -17,9 +17,8 @@ class AppFooter extends StatelessWidget {
 
     return Container(
       padding: EdgeInsets.symmetric(horizontal: padding, vertical: 48),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceMuted,
-        border: Border(top: BorderSide(color: AppColors.border.withValues(alpha: 0.8))),
+      decoration: const BoxDecoration(
+        color: AppColors.black,
       ),
       child: Column(
         children: [
@@ -51,7 +50,7 @@ class AppFooter extends StatelessWidget {
               ],
             ),
           const SizedBox(height: 32),
-          Divider(color: AppColors.border.withValues(alpha: 0.6)),
+          Divider(color: Colors.white.withValues(alpha: 0.12)),
           const SizedBox(height: 16),
           Text(
             AppStrings.copyright(DateTime.now().year),
@@ -59,6 +58,22 @@ class AppFooter extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle({required this.text});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: AppColors.gold,
+          ),
     );
   }
 }
@@ -71,10 +86,11 @@ class _QuickAccessColumn extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(AppStrings.footerQuickAccess, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+        _SectionTitle(text: AppStrings.footerQuickAccess),
         const SizedBox(height: 16),
         _FooterLink(label: AppStrings.footerCarCategories, onTap: () => context.go('/shop')),
         _FooterLink(label: AppStrings.footerPartCategories, onTap: () => context.go('/shop')),
+        _FooterLink(label: AppStrings.smartCatalog, onTap: () => context.go('/smart-catalog')),
         _FooterLink(label: AppStrings.shop, onTap: () => context.go('/shop')),
       ],
     );
@@ -89,7 +105,7 @@ class _ContactColumn extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(AppStrings.footerContact, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+        _SectionTitle(text: AppStrings.footerContact),
         const SizedBox(height: 16),
         _FooterLink(label: '${AppStrings.footerShop}: ${AppStrings.storePhone}'),
         _FooterLink(label: '${AppStrings.footerSupport}: ${AppStrings.supportPhone}'),
@@ -110,12 +126,9 @@ class _WorkingHoursColumn extends StatelessWidget {
       children: [
         Row(
           children: [
-            Icon(Icons.access_time_rounded, size: 20, color: AppColors.gold),
+            const Icon(Icons.access_time_rounded, size: 20, color: AppColors.gold),
             const SizedBox(width: 8),
-            Text(
-              AppStrings.footerWorkingHours,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-            ),
+            _SectionTitle(text: AppStrings.footerWorkingHours),
           ],
         ),
         const SizedBox(height: 16),
@@ -137,20 +150,20 @@ class _TrustColumn extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(AppStrings.footerTrust, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+        _SectionTitle(text: AppStrings.footerTrust),
         const SizedBox(height: 16),
         Container(
           width: 100,
           height: 100,
           decoration: BoxDecoration(
-            color: AppColors.white,
-            border: Border.all(color: AppColors.border),
+            color: AppColors.blackLight,
+            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.verified_user_outlined, size: 36, color: AppColors.primary.withValues(alpha: 0.7)),
+              Icon(Icons.verified_user_outlined, size: 36, color: AppColors.gold.withValues(alpha: 0.85)),
               const SizedBox(height: 8),
               Text('e-Namad', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.textMuted)),
             ],
@@ -169,7 +182,7 @@ class _SocialColumn extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(AppStrings.footerSocial, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+        _SectionTitle(text: AppStrings.footerSocial),
         const SizedBox(height: 16),
         Row(
           children: [
@@ -213,15 +226,14 @@ class _SocialIconState extends State<_SocialIcon> {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: _hovered ? AppColors.primary : AppColors.white,
+                color: _hovered ? AppColors.gold : Colors.transparent,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.border),
-                boxShadow: _hovered ? [AppTheme.softShadow] : null,
+                border: Border.all(color: _hovered ? AppColors.gold : Colors.white.withValues(alpha: 0.25)),
               ),
               child: Icon(
                 widget.icon,
                 size: 22,
-                color: _hovered ? Colors.white : AppColors.textSecondary,
+                color: _hovered ? AppColors.textOnGold : AppColors.textOnDark,
               ),
             ),
           ),
@@ -231,20 +243,34 @@ class _SocialIconState extends State<_SocialIcon> {
   }
 }
 
-class _FooterLink extends StatelessWidget {
+class _FooterLink extends StatefulWidget {
   const _FooterLink({required this.label, this.onTap});
   final String label;
   final VoidCallback? onTap;
 
   @override
+  State<_FooterLink> createState() => _FooterLinkState();
+}
+
+class _FooterLinkState extends State<_FooterLink> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: InkWell(
-        onTap: onTap,
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: InkWell(
+          onTap: widget.onTap,
+          child: AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 200),
+            style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                  color: _hovered ? AppColors.gold : AppColors.textOnDark.withValues(alpha: 0.85),
+                ),
+            child: Text(widget.label),
+          ),
         ),
       ),
     );

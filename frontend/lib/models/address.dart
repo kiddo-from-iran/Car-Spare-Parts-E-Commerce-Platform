@@ -9,6 +9,8 @@ class UserAddress {
   final String zipCode;
   final String country;
   final bool isDefault;
+  final double? latitude;
+  final double? longitude;
 
   UserAddress({
     required this.id,
@@ -21,36 +23,36 @@ class UserAddress {
     required this.zipCode,
     required this.country,
     required this.isDefault,
+    this.latitude,
+    this.longitude,
   });
 
-  String get fullName => '$firstName $lastName';
+  String get fullName => '$firstName $lastName'.trim();
 
-  String get summary => '$city، $state — $address';
+  String get summary => address;
 
   factory UserAddress.fromJson(Map<String, dynamic> json) {
     return UserAddress(
       id: json['id'] as int,
       label: json['label'] as String,
-      firstName: json['first_name'] as String,
-      lastName: json['last_name'] as String,
+      firstName: json['first_name'] as String? ?? '',
+      lastName: json['last_name'] as String? ?? '',
       address: json['address'] as String,
-      city: json['city'] as String,
-      state: json['state'] as String,
-      zipCode: json['zip_code'] as String,
-      country: json['country'] as String,
+      city: json['city'] as String? ?? '',
+      state: json['state'] as String? ?? '',
+      zipCode: json['zip_code'] as String? ?? '',
+      country: json['country'] as String? ?? 'ایران',
       isDefault: json['is_default'] as bool,
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
     );
   }
 
   Map<String, dynamic> toJson() => {
         'label': label,
-        'first_name': firstName,
-        'last_name': lastName,
         'address': address,
-        'city': city,
-        'state': state,
-        'zip_code': zipCode,
-        'country': country,
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
         'is_default': isDefault,
       };
 }

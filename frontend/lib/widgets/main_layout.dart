@@ -100,11 +100,12 @@ class AppShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final path = GoRouterState.of(context).uri.path;
     final isAdmin = path.startsWith('/admin');
+    final isAccount = path.startsWith('/account');
 
     return MainLayout(
-      showFooter: !isAdmin,
-      scrollWithFooter: !isAdmin,
-      scrollBody: !isAdmin,
+      showFooter: !isAdmin && !isAccount,
+      scrollWithFooter: !isAdmin && !isAccount,
+      scrollBody: !isAdmin && !isAccount,
       child: LuxuryPageTransition(child: child),
     );
   }
