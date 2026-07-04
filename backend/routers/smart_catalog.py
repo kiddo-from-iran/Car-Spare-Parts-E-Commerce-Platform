@@ -65,7 +65,7 @@ def get_vehicle_detail(vehicle_id: str):
         brand_logo=vehicle.get("brand_logo", ""),
         image=vehicle["image"],
         views=vehicle["views"],
-        categories=CATALOG_CATEGORIES,
+        categories=vehicle.get("categories") or CATALOG_CATEGORIES,
     )
 
 
@@ -109,12 +109,12 @@ def get_hotspot_product(vehicle_id: str, hotspot_id: str, view_id: str = Query(.
         conn = get_conn()
         related = conn.execute(
             "SELECT * FROM products WHERE category = ? AND id != ? ORDER BY popularity DESC LIMIT 6",
-            (primary["category"], primary["id"]),
+            (primary.category, primary.id),
         ).fetchall()
         conn.close()
         return CatalogHotspotProduct(
             hotspot=CatalogHotspot(**hotspot),
-            product=Product(**primary),
+            product=primary,
             products=products,
             part_number=hotspot.get("part_number", ""),
             oem_number=hotspot.get("oem", ""),

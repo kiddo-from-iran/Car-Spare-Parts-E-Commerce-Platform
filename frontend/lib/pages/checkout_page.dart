@@ -105,7 +105,15 @@ class _CheckoutPageState extends State<CheckoutPage> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    final usingSaved = !_useManualAddress && _selectedAddressId != null;
+    if (usingSaved) {
+      if (_selectedAddressId == null) {
+        context.showError('لطفاً یک آدرس ذخیره‌شده انتخاب کنید');
+        return;
+      }
+    } else if (!_formKey.currentState!.validate()) {
+      return;
+    }
 
     final cart = context.read<CartProvider>();
     if (cart.items.isEmpty) return;
@@ -114,28 +122,34 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
     try {
       final payload = <String, dynamic>{
-        'first_name': _firstName.text.trim(),
-        'last_name': _lastName.text.trim(),
-        'address': _address.text.trim(),
-        'city': _city.text.trim(),
-        'state': _state.text.trim(),
-        'zip_code': _zip.text.trim(),
-        'country': _country.text.trim(),
         'shipping_method': _shippingMethod,
         'card_number': _cardNumber.text.trim(),
         'expiry': _expiry.text.trim(),
         'cvv': _cvv.text.trim(),
         'items': cart.toCheckoutItems(),
       };
+
+      if (usingSaved) {
+        payload['saved_address_id'] = _selectedAddressId;
+      } else {
+        payload.addAll({
+          'first_name': _firstName.text.trim(),
+          'last_name': _lastName.text.trim(),
+          'address': _address.text.trim(),
+          'city': _city.text.trim(),
+          'state': _state.text.trim(),
+          'zip_code': _zip.text.trim(),
+          'country': _country.text.trim(),
+        });
+      }
+
       if (_appliedDiscountCode != null) {
         payload['discount_code'] = _appliedDiscountCode;
-      }
-      if (!_useManualAddress && _selectedAddressId != null) {
-        payload['saved_address_id'] = _selectedAddressId;
       }
 
       final result = await context.read<ApiService>().checkout(payload);
       cart.clear();
+      if (!mounted) return;
       setState(() => _orderId = result['order_id'] as String);
       context.showSuccess(AppStrings.toastOrderPlaced);
     } catch (e) {
@@ -384,7 +398,6 @@ class _CheckoutForm extends StatelessWidget {
                   child: TextFormField(
                     controller: firstName,
                     decoration: const InputDecoration(labelText: AppStrings.firstName),
-                    validator: (v) => v == null || v.isEmpty ? AppStrings.required : null,
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -392,7 +405,6 @@ class _CheckoutForm extends StatelessWidget {
                   child: TextFormField(
                     controller: lastName,
                     decoration: const InputDecoration(labelText: AppStrings.lastName),
-                    validator: (v) => v == null || v.isEmpty ? AppStrings.required : null,
                   ),
                 ),
               ],
@@ -401,7 +413,7 @@ class _CheckoutForm extends StatelessWidget {
             TextFormField(
               controller: address,
               decoration: const InputDecoration(labelText: AppStrings.address),
-              validator: (v) => v == null || v.isEmpty ? AppStrings.required : null,
+              validator: (v) => v == null || v.trim().isEmpty ? AppStrings.required : null,
             ),
             const SizedBox(height: 16),
             Row(
@@ -410,7 +422,6 @@ class _CheckoutForm extends StatelessWidget {
                   child: TextFormField(
                     controller: city,
                     decoration: const InputDecoration(labelText: AppStrings.city),
-                    validator: (v) => v == null || v.isEmpty ? AppStrings.required : null,
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -418,7 +429,6 @@ class _CheckoutForm extends StatelessWidget {
                   child: TextFormField(
                     controller: state,
                     decoration: const InputDecoration(labelText: AppStrings.state),
-                    validator: (v) => v == null || v.isEmpty ? AppStrings.required : null,
                   ),
                 ),
               ],
@@ -430,7 +440,6 @@ class _CheckoutForm extends StatelessWidget {
                   child: TextFormField(
                     controller: zip,
                     decoration: const InputDecoration(labelText: AppStrings.zipCode),
-                    validator: (v) => v == null || v.isEmpty ? AppStrings.required : null,
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -438,7 +447,6 @@ class _CheckoutForm extends StatelessWidget {
                   child: TextFormField(
                     controller: country,
                     decoration: const InputDecoration(labelText: AppStrings.country),
-                    validator: (v) => v == null || v.isEmpty ? AppStrings.required : null,
                   ),
                 ),
               ],
@@ -594,7 +602,9 @@ class _OrderSummary extends StatelessWidget {
           const SizedBox(height: 24),
           ElevatedButton(
             onPressed: submitting ? null : onSubmit,
-            child: Text(submitting ? AppStrings.processing : AppStrings.placeOrder),
+            child: submitting
+                ? const AppLoadingInline(size: 22)
+                : Text(AppStrings.placeOrder),
           ),
         ],
       ),

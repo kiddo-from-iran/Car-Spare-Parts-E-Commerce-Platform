@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 
 import '../models/address.dart';
 import '../models/order.dart';
@@ -537,13 +538,29 @@ class ApiService {
     await _handle(response);
   }
 
+  MediaType? _imageMediaType(String filename) {
+    final ext = filename.contains('.') ? filename.split('.').last.toLowerCase() : '';
+    return switch (ext) {
+      'jpg' || 'jpeg' => MediaType('image', 'jpeg'),
+      'png' => MediaType('image', 'png'),
+      'webp' => MediaType('image', 'webp'),
+      'gif' => MediaType('image', 'gif'),
+      _ => null,
+    };
+  }
+
   Future<String> uploadCatalogImage(List<int> bytes, String filename) async {
     final request = http.MultipartRequest(
       'POST',
       Uri.parse('$baseUrl/api/admin/catalogs/upload-image'),
     );
     if (token != null) request.headers['Authorization'] = 'Bearer $token';
-    request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
+    request.files.add(http.MultipartFile.fromBytes(
+      'file',
+      bytes,
+      filename: filename,
+      contentType: _imageMediaType(filename),
+    ));
     final streamed = await request.send();
     final response = await http.Response.fromStream(streamed);
     final result = (await _handle(response)) as Map<String, dynamic>;

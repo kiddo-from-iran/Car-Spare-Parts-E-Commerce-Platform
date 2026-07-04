@@ -105,6 +105,7 @@ class _AdminCatalogEditorState extends State<AdminCatalogEditor> {
   late final TextEditingController _viewNameController;
   late final TextEditingController _hotspotLabelController;
   late List<_EditableView> _views;
+  late List<CatalogCategory> _categories;
   int _viewIndex = 0;
   String? _selectedHotspotId;
   bool _uploading = false;
@@ -121,6 +122,7 @@ class _AdminCatalogEditorState extends State<AdminCatalogEditor> {
     _views = d != null && d.views.isNotEmpty
         ? d.views.map(_EditableView.fromDetail).toList()
         : [_EditableView(id: 'view-front', name: 'نمای جلو')];
+    _categories = _initialCategories(d);
     _viewNameController = TextEditingController(text: _currentView.name);
     _hotspotLabelController = TextEditingController();
   }
@@ -136,7 +138,72 @@ class _AdminCatalogEditorState extends State<AdminCatalogEditor> {
     super.dispose();
   }
 
+  List<CatalogCategory> _initialCategories(AdminCatalogDetail? detail) {
+    if (detail != null && detail.categories.isNotEmpty) {
+      return List<CatalogCategory>.from(detail.categories);
+    }
+    if (widget.categories.isNotEmpty) {
+      return List<CatalogCategory>.from(widget.categories);
+    }
+    return [
+      CatalogCategory(id: 'body', name: 'بدنه', icon: 'body'),
+    ];
+  }
+
+  String _defaultCategoryId() => _categories.first.id;
+
+  String _slugCategoryId(String name) {
+    var base = name
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'\s+'), '-')
+        .replaceAll(RegExp(r'[^a-z0-9\u0600-\u06FF_-]'), '');
+    if (base.isEmpty) {
+      base = 'cat-${DateTime.now().millisecondsSinceEpoch}';
+    }
+    if (_categories.any((c) => c.id == base)) {
+      base = '$base-${DateTime.now().millisecondsSinceEpoch % 10000}';
+    }
+    return base;
+  }
+
   _EditableView get _currentView => _views[_viewIndex];
+
+  Future<void> _addCategory({void Function(String id)? onCreated}) async {
+    final nameController = TextEditingController();
+    final created = await showDialog<CatalogCategory>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text(AppStrings.catalogAddCategory),
+        content: TextField(
+          controller: nameController,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: AppStrings.catalogCategoryName,
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text(AppStrings.cancel)),
+          FilledButton(
+            onPressed: () {
+              final name = nameController.text.trim();
+              if (name.isEmpty) return;
+              Navigator.pop(
+                ctx,
+                CatalogCategory(id: _slugCategoryId(name), name: name, icon: 'category'),
+              );
+            },
+            child: const Text(AppStrings.save),
+          ),
+        ],
+      ),
+    );
+    nameController.dispose();
+    if (created == null || !mounted) return;
+    setState(() => _categories = [..._categories, created]);
+    onCreated?.call(created.id);
+  }
 
   _EditableHotspot? get _selectedHotspot {
     final id = _selectedHotspotId;
@@ -227,7 +294,7 @@ class _AdminCatalogEditorState extends State<AdminCatalogEditor> {
         _EditableHotspot(
           id: id,
           label: 'نقطه ${_currentView.hotspots.length + 1}',
-          category: widget.categories.first.id,
+          category: _defaultCategoryId(),
           x: x,
           y: y,
         ),
@@ -288,6 +355,9 @@ class _AdminCatalogEditorState extends State<AdminCatalogEditor> {
       'year': _year.text.trim(),
       'brand_logo': widget.detail?.brandLogo ?? '',
       'image': _views.first.image,
+      'categories': _categories
+          .map((c) => {'id': c.id, 'name': c.name, 'icon': c.icon})
+          .toList(),
       'views': _views.map((v) => v.toJson()).toList(),
     };
     await widget.onSave(payload);
@@ -435,7 +505,7 @@ class _AdminCatalogEditorState extends State<AdminCatalogEditor> {
                       const SizedBox(width: 20),
                       Expanded(flex: 2, child: _HotspotSidePanel(
                         hotspot: selected,
-                        categories: widget.categories,
+                        categories: _categories,
                         products: widget.products,
                         filteredProducts: _filteredProducts,
                         searchController: _productSearch,
@@ -445,6 +515,9 @@ class _AdminCatalogEditorState extends State<AdminCatalogEditor> {
                           selected?.label = v;
                         },
                         onCategoryChanged: (v) => setState(() => selected?.category = v),
+                        onAddCategory: () => _addCategory(
+                          onCreated: (id) => selected?.category = id,
+                        ),
                         onToggleProduct: _toggleProduct,
                         onRemoveHotspot: selected == null ? null : () => _removeHotspot(selected.id),
                       )),
@@ -461,7 +534,7 @@ class _AdminCatalogEditorState extends State<AdminCatalogEditor> {
                   const SizedBox(height: 16),
                   _HotspotSidePanel(
                     hotspot: selected,
-                    categories: widget.categories,
+                    categories: _categories,
                     products: widget.products,
                     filteredProducts: _filteredProducts,
                     searchController: _productSearch,
@@ -471,6 +544,9 @@ class _AdminCatalogEditorState extends State<AdminCatalogEditor> {
                       selected?.label = v;
                     },
                     onCategoryChanged: (v) => setState(() => selected?.category = v),
+                    onAddCategory: () => _addCategory(
+                      onCreated: (id) => selected?.category = id,
+                    ),
                     onToggleProduct: _toggleProduct,
                     onRemoveHotspot: selected == null ? null : () => _removeHotspot(selected.id),
                   ),
@@ -613,6 +689,7 @@ class _HotspotSidePanel extends StatelessWidget {
     required this.onSearchChanged,
     required this.onLabelChanged,
     required this.onCategoryChanged,
+    required this.onAddCategory,
     required this.onToggleProduct,
     required this.onRemoveHotspot,
   });
@@ -626,6 +703,7 @@ class _HotspotSidePanel extends StatelessWidget {
   final ValueChanged<String> onSearchChanged;
   final ValueChanged<String> onLabelChanged;
   final ValueChanged<String> onCategoryChanged;
+  final VoidCallback onAddCategory;
   final ValueChanged<int> onToggleProduct;
   final VoidCallback? onRemoveHotspot;
 
@@ -648,6 +726,14 @@ class _HotspotSidePanel extends StatelessWidget {
 
     final h = hotspot!;
     final selectedProducts = products.where((p) => h.productIds.contains(p.id)).toList();
+    final categoryOptions = [
+      ...categories,
+      if (h.category.isNotEmpty && !categories.any((c) => c.id == h.category))
+        CatalogCategory(id: h.category, name: h.category, icon: 'category'),
+    ];
+    final selectedCategoryId = categoryOptions.any((c) => c.id == h.category)
+        ? h.category
+        : categoryOptions.first.id;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -687,14 +773,23 @@ class _HotspotSidePanel extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
-            value: categories.any((c) => c.id == h.category) ? h.category : categories.first.id,
-            decoration: const InputDecoration(labelText: 'دسته', border: OutlineInputBorder()),
-            items: categories
+            value: selectedCategoryId,
+            decoration: const InputDecoration(labelText: 'دسته‌بندی', border: OutlineInputBorder()),
+            items: categoryOptions
                 .map((c) => DropdownMenuItem(value: c.id, child: Text(c.name)))
                 .toList(),
             onChanged: (v) {
               if (v != null) onCategoryChanged(v);
             },
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: TextButton.icon(
+              onPressed: onAddCategory,
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text(AppStrings.catalogAddCategory),
+            ),
           ),
           const SizedBox(height: 16),
           Text(AppStrings.catalogAssignProducts, style: const TextStyle(fontWeight: FontWeight.w600)),

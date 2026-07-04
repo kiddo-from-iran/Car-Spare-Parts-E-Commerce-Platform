@@ -77,6 +77,7 @@ class AdminCatalogSave(BaseModel):
     year: str = ""
     brand_logo: str = ""
     image: str = ""
+    categories: list[CatalogCategory] = Field(default_factory=list)
     views: list[CatalogViewInput] = Field(default_factory=list)
 
 
@@ -305,12 +306,12 @@ class CartItem(BaseModel):
 
 
 class CheckoutRequest(BaseModel):
-    first_name: str
-    last_name: str
-    address: str
-    city: str
-    state: str
-    zip_code: str
+    first_name: str = ""
+    last_name: str = ""
+    address: str = ""
+    city: str = ""
+    state: str = ""
+    zip_code: str = ""
     country: str = "ایران"
     shipping_method: str = "post"
     discount_code: Optional[str] = None

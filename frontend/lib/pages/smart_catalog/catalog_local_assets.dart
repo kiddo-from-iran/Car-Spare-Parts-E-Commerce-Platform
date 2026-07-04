@@ -1,22 +1,31 @@
 import '../../constants/app_assets.dart';
 import '../../models/smart_catalog.dart';
 
-/// Applies local catalog/car asset paths to API vehicle data.
+String _resolveVehicleImage(String vehicleId, String apiImage) {
+  if (apiImage.isNotEmpty) return apiImage;
+  return AppAssets.smartCatalogThumbnail(vehicleId);
+}
+
+String _resolveViewImage(String vehicleId, String viewId, String apiImage) {
+  if (apiImage.isNotEmpty) return apiImage;
+  return AppAssets.smartCatalogViewDiagram(vehicleId, viewId);
+}
+
+/// Keeps uploaded/API image URLs; falls back to bundled assets for legacy catalogs.
 CatalogVehicleDetail localizeCatalogVehicle(CatalogVehicleDetail vehicle) {
-  final image = AppAssets.smartCatalogThumbnail(vehicle.id);
   return CatalogVehicleDetail(
     id: vehicle.id,
     name: vehicle.name,
     subtitle: vehicle.subtitle,
     year: vehicle.year,
     brandLogo: vehicle.brandLogo,
-    image: image,
+    image: _resolveVehicleImage(vehicle.id, vehicle.image),
     views: vehicle.views
         .map(
           (view) => CatalogView(
             id: view.id,
             name: view.name,
-            image: AppAssets.smartCatalogViewDiagram(vehicle.id, view.id),
+            image: _resolveViewImage(vehicle.id, view.id, view.image),
           ),
         )
         .toList(),
@@ -31,7 +40,7 @@ CatalogVehicleSummary localizeCatalogVehicleSummary(CatalogVehicleSummary vehicl
     subtitle: vehicle.subtitle,
     year: vehicle.year,
     brandLogo: vehicle.brandLogo,
-    image: AppAssets.smartCatalogThumbnail(vehicle.id),
+    image: _resolveVehicleImage(vehicle.id, vehicle.image),
   );
 }
 

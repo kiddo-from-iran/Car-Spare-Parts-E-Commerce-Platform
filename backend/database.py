@@ -8,7 +8,7 @@ import bcrypt
 from constants import OrderStatus
 
 DB_PATH = Path(__file__).parent / "shop.db"
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 8
 
 
 def hash_password(plain: str) -> str:
@@ -214,6 +214,29 @@ def _migrate_schema(cur: sqlite3.Cursor) -> None:
     _maybe_reseed_products(cur)
     _migrate_catalog_tables(cur)
     _migrate_address_coords(cur)
+    _migrate_order_status_legacy(cur)
+    _migrate_catalog_vehicle_categories(cur)
+
+
+def _migrate_catalog_vehicle_categories(cur: sqlite3.Cursor) -> None:
+    if not _table_exists(cur, "catalog_vehicles"):
+        return
+    cols = _table_columns(cur, "catalog_vehicles")
+    if "categories_json" not in cols:
+        cur.execute("ALTER TABLE catalog_vehicles ADD COLUMN categories_json TEXT NOT NULL DEFAULT ''")
+
+
+def _table_exists(cur: sqlite3.Cursor, name: str) -> bool:
+    row = cur.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+        (name,),
+    ).fetchone()
+    return row is not None
+
+
+def _migrate_order_status_legacy(cur: sqlite3.Cursor) -> None:
+    cur.execute("UPDATE orders SET status = 'delivered' WHERE status = 'completed'")
+    cur.execute("UPDATE orders SET status = 'pending_payment' WHERE status = 'registered'")
 
 
 def _migrate_address_coords(cur: sqlite3.Cursor) -> None:

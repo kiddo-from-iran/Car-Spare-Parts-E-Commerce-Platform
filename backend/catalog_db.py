@@ -15,6 +15,39 @@ def _now() -> str:
     return datetime.now().isoformat()
 
 
+def _parse_vehicle_categories(raw: Any) -> list[dict]:
+    if not raw:
+        return list(CATALOG_CATEGORIES)
+    try:
+        parsed = json.loads(raw) if isinstance(raw, str) else raw
+    except (TypeError, json.JSONDecodeError):
+        return list(CATALOG_CATEGORIES)
+    if not isinstance(parsed, list) or not parsed:
+        return list(CATALOG_CATEGORIES)
+    return [
+        {
+            "id": str(item.get("id") or ""),
+            "name": str(item.get("name") or ""),
+            "icon": str(item.get("icon") or "category"),
+        }
+        for item in parsed
+        if item.get("id") and item.get("name")
+    ] or list(CATALOG_CATEGORIES)
+
+
+def _serialize_categories(categories: list[dict]) -> str:
+    payload = [
+        {
+            "id": c.get("id", ""),
+            "name": c.get("name", ""),
+            "icon": c.get("icon", "category"),
+        }
+        for c in categories
+        if c.get("id") and c.get("name")
+    ]
+    return json.dumps(payload, ensure_ascii=False)
+
+
 def _table_exists(cur, name: str) -> bool:
     row = cur.execute(
         "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
@@ -33,6 +66,7 @@ def ensure_catalog_tables(cur) -> None:
             year TEXT NOT NULL DEFAULT '',
             brand_logo TEXT NOT NULL DEFAULT '',
             image TEXT NOT NULL DEFAULT '',
+            categories_json TEXT NOT NULL DEFAULT '',
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
@@ -172,10 +206,11 @@ def get_vehicle(vehicle_id: str) -> Optional[dict]:
         (vehicle_id,),
     ).fetchall()
     conn.close()
+    vehicle = dict(row)
     return {
-        **dict(row),
+        **vehicle,
         "views": [dict(v) for v in views],
-        "categories": CATALOG_CATEGORIES,
+        "categories": _parse_vehicle_categories(vehicle.get("categories_json")),
     }
 
 
@@ -311,10 +346,12 @@ def admin_save_catalog(payload: dict) -> dict:
     cur = conn.cursor()
     existing = cur.execute("SELECT id FROM catalog_vehicles WHERE id = ?", (vehicle_id,)).fetchone()
 
+    categories_json = _serialize_categories(payload.get("categories") or [])
+
     if existing:
         cur.execute(
             """UPDATE catalog_vehicles
-               SET name=?, subtitle=?, year=?, brand_logo=?, image=?, updated_at=?
+               SET name=?, subtitle=?, year=?, brand_logo=?, image=?, categories_json=?, updated_at=?
                WHERE id=?""",
             (
                 payload["name"],
@@ -322,6 +359,7 @@ def admin_save_catalog(payload: dict) -> dict:
                 payload.get("year", ""),
                 payload.get("brand_logo", ""),
                 payload.get("image", ""),
+                categories_json,
                 now,
                 vehicle_id,
             ),
@@ -332,8 +370,8 @@ def admin_save_catalog(payload: dict) -> dict:
     else:
         cur.execute(
             """INSERT INTO catalog_vehicles
-            (id, name, subtitle, year, brand_logo, image, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (id, name, subtitle, year, brand_logo, image, categories_json, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 vehicle_id,
                 payload["name"],
@@ -341,6 +379,7 @@ def admin_save_catalog(payload: dict) -> dict:
                 payload.get("year", ""),
                 payload.get("brand_logo", ""),
                 payload.get("image", ""),
+                categories_json,
                 now,
                 now,
             ),

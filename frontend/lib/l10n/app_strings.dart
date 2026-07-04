@@ -251,6 +251,8 @@ class AppStrings {
   static const catalogUploadImage = 'بارگذاری تصویر';
   static const catalogAddView = 'افزودن نما';
   static const catalogClickToPlace = 'روی تصویر کلیک کنید تا نقطه اضافه شود';
+  static const catalogAddCategory = 'افزودن دسته';
+  static const catalogCategoryName = 'نام دسته';
   static const save = 'ذخیره';
   static const cancel = 'انصراف';
 

@@ -275,18 +275,13 @@ class _AppNavbarState extends State<AppNavbar> {
                     },
                   )
                 else
-                  PopupMenuButton<String>(
+                  _ActionButton(
+                    icon: Icons.person_outline,
                     tooltip: AppStrings.account,
-                    child: _ActionButton(icon: Icons.person_outline, onTap: () {}),
-                    onSelected: (path) {
+                    onTap: () {
                       _closeMegaMenu();
-                      context.go(path);
+                      context.go('/account');
                     },
-                    itemBuilder: (_) => [
-                      const PopupMenuItem(value: '/account', child: Text(AppStrings.userDashboard)),
-                      const PopupMenuItem(value: '/account/profile', child: Text(AppStrings.userProfile)),
-                      const PopupMenuItem(value: '/account/tickets', child: Text(AppStrings.myTickets)),
-                    ],
                   ),
                 _ActionButton(
                   icon: Icons.logout,

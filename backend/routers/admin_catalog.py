@@ -17,6 +17,15 @@ router = APIRouter(prefix="/api/admin/catalogs", tags=["admin-catalogs"])
 UPLOAD_DIR = Path(__file__).parent.parent / "static" / "catalog"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
+ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
+
+
+def _is_image_upload(file: UploadFile) -> bool:
+    if file.content_type and file.content_type.startswith("image/"):
+        return True
+    ext = Path(file.filename or "").suffix.lower()
+    return ext in ALLOWED_IMAGE_EXTENSIONS
+
 
 @router.get("", response_model=list[AdminCatalogSummary])
 def list_catalogs(_: dict = Depends(require_admin)):
@@ -70,11 +79,11 @@ async def upload_catalog_image(
     file: UploadFile = File(...),
     _: dict = Depends(require_admin),
 ):
-    if not file.content_type or not file.content_type.startswith("image/"):
+    if not _is_image_upload(file):
         raise HTTPException(status_code=400, detail="فقط فایل تصویر مجاز است")
 
     ext = Path(file.filename or "image.png").suffix.lower() or ".png"
-    if ext not in {".png", ".jpg", ".jpeg", ".webp", ".gif"}:
+    if ext not in ALLOWED_IMAGE_EXTENSIONS:
         ext = ".png"
 
     name = f"{uuid.uuid4().hex}{ext}"

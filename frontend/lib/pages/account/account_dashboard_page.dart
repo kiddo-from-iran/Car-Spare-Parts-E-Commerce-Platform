@@ -31,7 +31,13 @@ class _AccountDashboardPageState extends State<AccountDashboardPage> {
     try {
       final orders = await context.read<ApiService>().getMyOrders();
       if (mounted) setState(() => _orders = orders);
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('بارگذاری سفارش‌ها ناموفق بود: $e')),
+        );
+      }
+    }
     if (mounted) setState(() => _loading = false);
   }
 

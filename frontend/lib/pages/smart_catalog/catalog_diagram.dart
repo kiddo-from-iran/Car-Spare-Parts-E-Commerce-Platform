@@ -125,33 +125,6 @@ class _CatalogDiagramState extends State<CatalogDiagram> {
                 ),
               ),
             ),
-            if (hasImage)
-              Positioned(
-                bottom: 12,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceMuted,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.touch_app_outlined, size: 16, color: AppColors.gold),
-                        const SizedBox(width: 8),
-                        Text(
-                          AppStrings.catalogClickHint,
-                          style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
           ],
         ),
       ),

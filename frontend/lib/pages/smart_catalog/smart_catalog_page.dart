@@ -109,6 +109,7 @@ class _SmartCatalogPageState extends State<SmartCatalogPage> {
       setState(() {
         _vehicle = localizeCatalogVehicle(vehicle);
         _selectedViewId = viewId;
+        _categories = vehicle.categories.isNotEmpty ? vehicle.categories : _categories;
         _loadingVehicle = false;
       });
       await _loadHotspots(viewId);
@@ -158,6 +159,7 @@ class _SmartCatalogPageState extends State<SmartCatalogPage> {
 
     setState(() {
       _selectedHotspotId = hotspot.id;
+      _product = null;
       _loadingProduct = true;
     });
     _scrollToProductSection();
@@ -171,8 +173,13 @@ class _SmartCatalogPageState extends State<SmartCatalogPage> {
         });
         _scrollToProductSection();
       }
-    } catch (_) {
-      if (mounted) setState(() => _loadingProduct = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loadingProduct = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('بارگذاری محصولات نقطه ناموفق بود: $e')),
+        );
+      }
     }
   }
 
@@ -299,8 +306,7 @@ class _SmartCatalogPageState extends State<SmartCatalogPage> {
 
     final viewportHeight = AppResponsive.viewportContentHeight(context);
     final showProductPanel = _selectedHotspotId != null || _loadingProduct || _product != null;
-    final catalogBaseHeight = viewportHeight - (isPhone ? 80 : 100);
-    final catalogHeight = showProductPanel ? catalogBaseHeight * 0.66 : catalogBaseHeight;
+    final catalogHeight = viewportHeight - (isPhone ? 80 : 100);
 
     if (_loadingVehicles) {
       return SizedBox(
@@ -316,13 +322,9 @@ class _SmartCatalogPageState extends State<SmartCatalogPage> {
         children: [
           _Header(isPhone: isPhone),
           const SizedBox(height: 20),
-          AnimatedSize(
-            duration: const Duration(milliseconds: 360),
-            curve: Curves.easeOutCubic,
-            alignment: Alignment.topCenter,
-            child: SizedBox(
-              height: catalogHeight,
-              child: isPhone
+          SizedBox(
+            height: catalogHeight,
+            child: isPhone
                 ? _MobileLayout(
                     vehicles: _vehicles,
                     vehicle: _vehicle,
@@ -397,9 +399,8 @@ class _SmartCatalogPageState extends State<SmartCatalogPage> {
                       ),
                     ],
                   ),
-            ),
           ),
-          if (_selectedHotspotId != null || _loadingProduct || _product != null) ...[
+          if (showProductPanel) ...[
             const SizedBox(height: 28),
             DecoratedBox(
               key: _productSectionKey,

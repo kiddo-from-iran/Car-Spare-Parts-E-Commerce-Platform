@@ -13,12 +13,23 @@ from constants import (
     SHIPPING_COSTS,
     SHIPPING_LABELS,
     OrderStatus,
+    normalize_order_status,
+    order_status_label,
 )
 from database import get_conn
 from models import CheckoutRequest, CheckoutResponse, OrderItemOut, OrderOut, OrderStatusUpdate, RevenueSummary, MonthlyRevenue
 from routers.discounts import calculate_discount
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
+
+
+def _split_user_name(full_name: str) -> tuple[str, str]:
+    parts = (full_name or "").strip().split(None, 1)
+    if not parts:
+        return ("", "")
+    if len(parts) == 1:
+        return (parts[0], "")
+    return (parts[0], parts[1])
 
 
 def _row_val(row, key, default=None):
@@ -43,7 +54,7 @@ def _build_order(row, items_rows, user_row) -> OrderOut:
         )
         for i in items_rows
     ]
-    status = row["status"]
+    status = normalize_order_status(row["status"])
     subtotal = _row_val(row, "subtotal", row["total"])
     discount_amount = _row_val(row, "discount_amount", 0.0)
     shipping_cost = _row_val(row, "shipping_cost", 0.0)
@@ -56,7 +67,7 @@ def _build_order(row, items_rows, user_row) -> OrderOut:
         user_phone=_row_val(user_row, "phone", ""),
         user_email=user_row["email"],
         status=status,
-        status_label=ORDER_STATUS_LABELS.get(OrderStatus(status), status),
+        status_label=order_status_label(status),
         subtotal=subtotal,
         discount_code=_row_val(row, "discount_code"),
         discount_amount=discount_amount,
@@ -146,14 +157,24 @@ def checkout(data: CheckoutRequest, user: dict = Depends(get_current_user)):
         if addr is None:
             conn.close()
             raise HTTPException(status_code=400, detail="آدرس ذخیره‌شده یافت نشد")
-        first_name = addr["first_name"]
-        last_name = addr["last_name"]
+        first_name = addr["first_name"] or _split_user_name(user.get("full_name", ""))[0]
+        last_name = addr["last_name"] or _split_user_name(user.get("full_name", ""))[1]
         address = addr["address"]
-        city = addr["city"]
-        state = addr["state"]
-        zip_code = addr["zip_code"]
-        country = addr["country"]
+        city = addr["city"] or "—"
+        state = addr["state"] or "—"
+        zip_code = addr["zip_code"] or "—"
+        country = addr["country"] or "ایران"
         saved_address_id = addr["id"]
+    elif not address.strip():
+        conn.close()
+        raise HTTPException(status_code=400, detail="آدرس ارسال الزامی است")
+    else:
+        default_fn, default_ln = _split_user_name(user.get("full_name", ""))
+        first_name = first_name.strip() or default_fn
+        last_name = last_name.strip() or default_ln
+        city = city.strip() or "—"
+        state = state.strip() or "—"
+        zip_code = zip_code.strip() or "—"
 
     discount_code = None
     discount_amount = 0.0
@@ -193,7 +214,7 @@ def checkout(data: CheckoutRequest, user: dict = Depends(get_current_user)):
         (
             order_number,
             user["id"],
-            OrderStatus.REGISTERED.value,
+            OrderStatus.PENDING_PAYMENT.value,
             subtotal,
             discount_code,
             discount_amount,

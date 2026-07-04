@@ -27,6 +27,24 @@ ACTIVE_STATUSES = {
 
 COMPLETED_STATUSES = {OrderStatus.DELIVERED, OrderStatus.CANCELLED}
 
+# Legacy values stored before status enum was normalized
+LEGACY_ORDER_STATUS_ALIASES = {
+    "completed": OrderStatus.DELIVERED.value,
+    "registered": OrderStatus.PENDING_PAYMENT.value,
+}
+
+
+def normalize_order_status(status: str) -> str:
+    return LEGACY_ORDER_STATUS_ALIASES.get(status, status)
+
+
+def order_status_label(status: str) -> str:
+    normalized = normalize_order_status(status)
+    try:
+        return ORDER_STATUS_LABELS.get(OrderStatus(normalized), status)
+    except ValueError:
+        return status
+
 ORDER_STATUS_FLOW = [
     OrderStatus.PENDING_PAYMENT,
     OrderStatus.PROCESSING,
