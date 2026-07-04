@@ -1,0 +1,14 @@
+# Deploy backend: https://render.com → New → Blueprint → connect this repo
+# Free tier sleeps when idle; first request may take ~30s to wake up.
+services:
+  - type: web
+    name: car-spare-parts-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /docs
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.0"

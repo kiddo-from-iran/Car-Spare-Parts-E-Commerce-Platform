@@ -139,6 +139,50 @@ roozbeh/
 
 ---
 
+## Live deployment (GitHub Pages + Render)
+
+After pushing to GitHub, the site is published automatically:
+
+| | URL |
+|---|-----|
+| **Website (Flutter Web)** | `https://kiddo-from-iran.github.io/Car-Spare-Parts-E-Commerce-Platform/` |
+| **API (FastAPI on Render)** | `https://car-spare-parts-api.onrender.com` |
+| **API docs** | `https://car-spare-parts-api.onrender.com/docs` |
+
+Open the website link on any phone or PC. Use hash routes, e.g.  
+`https://kiddo-from-iran.github.io/Car-Spare-Parts-E-Commerce-Platform/#/smart-catalog`
+
+### One-time setup (repo owner)
+
+1. **Push** this repo to GitHub (`master` branch).
+2. **GitHub Pages:** Repository → **Settings → Pages → Build and deployment → Source:** `GitHub Actions`.
+3. **Backend on Render** (free tier):
+   - [render.com](https://render.com) → **New → Blueprint**
+   - Connect repo `kiddo-from-iran/Car-Spare-Parts-E-Commerce-Platform`
+   - Apply `render.yaml` (service name `car-spare-parts-api`)
+   - Wait until deploy is live; note the URL (default above).
+4. **Optional:** Repository → **Settings → Secrets and variables → Actions → Variables**  
+   Add `API_BASE_URL` = your Render URL if it differs from the default.
+5. Re-run **Deploy GitHub Pages** workflow (Actions tab) or push a commit.
+
+### CI / CD workflows
+
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| `CI` | Push / PR | Python smoke test, `flutter analyze`, `test`, `build web` |
+| `Deploy GitHub Pages` | Push to `master` / `main` | Builds Flutter web and publishes to GitHub Pages |
+
+### Local build matching production
+
+```powershell
+cd frontend
+flutter build web --release `
+  --base-href "/Car-Spare-Parts-E-Commerce-Platform/" `
+  --dart-define=API_BASE_URL=https://car-spare-parts-api.onrender.com
+```
+
+---
+
 ## License
 
 Private / educational project — see repository owner for usage terms.

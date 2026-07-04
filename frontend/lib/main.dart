@@ -7,6 +7,7 @@ import 'providers/auth_provider.dart';
 import 'providers/cart_provider.dart';
 import 'providers/toast_provider.dart';
 import 'providers/wishlist_provider.dart';
+import 'config/app_config.dart';
 import 'router.dart';
 import 'services/api_service.dart';
 import 'theme/app_theme.dart';
@@ -32,7 +33,7 @@ class _CuratedAppState extends State<CuratedApp> {
   @override
   void initState() {
     super.initState();
-    _api = ApiService();
+    _api = ApiService(baseUrl: AppConfig.apiBaseUrl);
     _auth = AuthProvider(_api)..init();
     _routerHolder = GoRouterHolder(createRouter(_auth));
   }
