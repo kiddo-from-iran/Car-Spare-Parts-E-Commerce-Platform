@@ -118,6 +118,29 @@ class _SmartCatalogPageState extends State<SmartCatalogPage> {
     }
   }
 
+  List<CatalogCategory> _categoriesForCurrentView() {
+    if (_allHotspots.isEmpty) return [];
+
+    final idsWithHotspots = _allHotspots.map((h) => h.category).toSet();
+    final byId = {for (final c in _categories) c.id: c};
+    final ordered = _categories.where((c) => idsWithHotspots.contains(c.id)).toList();
+
+    for (final id in idsWithHotspots) {
+      if (!byId.containsKey(id)) {
+        ordered.add(CatalogCategory(id: id, name: id, icon: 'category'));
+      }
+    }
+    return ordered;
+  }
+
+  void _syncCategoryFilterForView(List<CatalogHotspot> hotspots) {
+    if (_categoryFilter == null) return;
+    final available = hotspots.map((h) => h.category).toSet();
+    if (!available.contains(_categoryFilter)) {
+      _categoryFilter = null;
+    }
+  }
+
   Future<void> _selectView(String viewId) async {
     if (_selectedViewId == viewId) return;
     setState(() {
@@ -125,6 +148,7 @@ class _SmartCatalogPageState extends State<SmartCatalogPage> {
       _selectedHotspotId = null;
       _highlightHotspotId = null;
       _product = null;
+      _categoryFilter = null;
     });
     await _loadHotspots(viewId);
   }
@@ -137,13 +161,13 @@ class _SmartCatalogPageState extends State<SmartCatalogPage> {
     try {
       final api = context.read<ApiService>();
       final all = await api.getCatalogHotspots(vehicleId, viewId);
-      final filtered = _categoryFilter == null
-          ? all
-          : await api.getCatalogHotspots(vehicleId, viewId, category: _categoryFilter);
       if (mounted) {
         setState(() {
           _allHotspots = all;
-          _hotspots = filtered;
+          _syncCategoryFilterForView(all);
+          _hotspots = _categoryFilter == null
+              ? all
+              : all.where((h) => h.category == _categoryFilter).toList();
           _loadingHotspots = false;
         });
       }
@@ -256,31 +280,12 @@ class _SmartCatalogPageState extends State<SmartCatalogPage> {
   }
 
   Future<void> _setCategory(String? categoryId) async {
-    setState(() => _categoryFilter = categoryId);
-    final viewId = _selectedViewId;
-    if (viewId == null || _selectedVehicleId == null) return;
-
-    if (categoryId == null) {
-      await _loadHotspots(viewId);
-      return;
-    }
-
-    setState(() => _loadingHotspots = true);
-    try {
-      final filtered = await context.read<ApiService>().getCatalogHotspots(
-            _selectedVehicleId!,
-            viewId,
-            category: categoryId,
-          );
-      if (mounted) {
-        setState(() {
-          _hotspots = filtered;
-          _loadingHotspots = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _loadingHotspots = false);
-    }
+    setState(() {
+      _categoryFilter = categoryId;
+      _hotspots = categoryId == null
+          ? _allHotspots
+          : _allHotspots.where((h) => h.category == categoryId).toList();
+    });
   }
 
   IconData _categoryIcon(String icon) => switch (icon) {
@@ -307,6 +312,7 @@ class _SmartCatalogPageState extends State<SmartCatalogPage> {
     final viewportHeight = AppResponsive.viewportContentHeight(context);
     final showProductPanel = _selectedHotspotId != null || _loadingProduct || _product != null;
     final catalogHeight = viewportHeight - (isPhone ? 80 : 100);
+    final viewCategories = _categoriesForCurrentView();
 
     if (_loadingVehicles) {
       return SizedBox(
@@ -328,7 +334,7 @@ class _SmartCatalogPageState extends State<SmartCatalogPage> {
                 ? _MobileLayout(
                     vehicles: _vehicles,
                     vehicle: _vehicle,
-                    categories: _categories,
+                    categories: viewCategories,
                     hotspots: _hotspots,
                     allHotspots: _allHotspots,
                     selectedVehicleId: _selectedVehicleId,
@@ -379,7 +385,7 @@ class _SmartCatalogPageState extends State<SmartCatalogPage> {
                       Expanded(
                         child: _CatalogWorkspace(
                           vehicle: _vehicle,
-                          categories: _categories,
+                          categories: viewCategories,
                           hotspots: _hotspots,
                           allHotspots: _allHotspots,
                           selectedViewId: _selectedViewId,
@@ -739,34 +745,37 @@ class _CatalogWorkspace extends StatelessWidget {
                 ),
         ),
         const SizedBox(height: 12),
-        Text(AppStrings.catalogCategoriesTitle, style: const TextStyle(fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 72,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: categories.length + 1,
-            separatorBuilder: (_, __) => const SizedBox(width: 8),
-            itemBuilder: (context, index) {
-              if (index == 0) {
-                final active = categoryFilter == null;
+        if (categories.isNotEmpty) ...[
+          Text(AppStrings.catalogCategoriesTitle, style: const TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 72,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: (categories.length > 1 ? 1 : 0) + categories.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final showAllChip = categories.length > 1;
+                if (showAllChip && index == 0) {
+                  final active = categoryFilter == null;
+                  return _CategoryChip(
+                    label: AppStrings.catalogAllCategories,
+                    icon: Icons.apps,
+                    active: active,
+                    onTap: () => onCategory(null),
+                  );
+                }
+                final cat = categories[index - (showAllChip ? 1 : 0)];
                 return _CategoryChip(
-                  label: AppStrings.catalogAllCategories,
-                  icon: Icons.apps,
-                  active: active,
-                  onTap: () => onCategory(null),
+                  label: cat.name,
+                  icon: categoryIcon(cat.icon),
+                  active: categoryFilter == cat.id,
+                  onTap: () => onCategory(cat.id),
                 );
-              }
-              final cat = categories[index - 1];
-              return _CategoryChip(
-                label: cat.name,
-                icon: categoryIcon(cat.icon),
-                active: categoryFilter == cat.id,
-                onTap: () => onCategory(cat.id),
-              );
-            },
+              },
+            ),
           ),
-        ),
+        ],
       ],
     );
   }

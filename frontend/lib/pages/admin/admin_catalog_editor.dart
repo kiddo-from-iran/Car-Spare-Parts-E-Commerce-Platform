@@ -304,6 +304,18 @@ class _AdminCatalogEditorState extends State<AdminCatalogEditor> {
     });
   }
 
+  void _moveHotspot(String id, double x, double y) {
+    setState(() {
+      for (final h in _currentView.hotspots) {
+        if (h.id == id) {
+          h.x = x;
+          h.y = y;
+          break;
+        }
+      }
+    });
+  }
+
   void _removeHotspot(String id) {
     setState(() {
       _currentView.hotspots = _currentView.hotspots.where((h) => h.id != id).toList();
@@ -501,6 +513,7 @@ class _AdminCatalogEditorState extends State<AdminCatalogEditor> {
                         selectedId: _selectedHotspotId,
                         onTapImage: _addHotspot,
                         onSelect: _selectHotspot,
+                        onMoveHotspot: _moveHotspot,
                       )),
                       const SizedBox(width: 20),
                       Expanded(flex: 2, child: _HotspotSidePanel(
@@ -529,7 +542,8 @@ class _AdminCatalogEditorState extends State<AdminCatalogEditor> {
                     hotspots: _currentView.hotspots,
                     selectedId: _selectedHotspotId,
                     onTapImage: _addHotspot,
-                    onSelect: (id) => setState(() => _selectedHotspotId = id),
+                    onSelect: _selectHotspot,
+                    onMoveHotspot: _moveHotspot,
                   ),
                   const SizedBox(height: 16),
                   _HotspotSidePanel(
@@ -582,13 +596,14 @@ class _AdminCatalogEditorState extends State<AdminCatalogEditor> {
   }
 }
 
-class _HotspotCanvas extends StatelessWidget {
+class _HotspotCanvas extends StatefulWidget {
   const _HotspotCanvas({
     required this.image,
     required this.hotspots,
     required this.selectedId,
     required this.onTapImage,
     required this.onSelect,
+    required this.onMoveHotspot,
   });
 
   final String image;
@@ -596,6 +611,24 @@ class _HotspotCanvas extends StatelessWidget {
   final String? selectedId;
   final void Function(double x, double y) onTapImage;
   final ValueChanged<String> onSelect;
+  final void Function(String id, double x, double y) onMoveHotspot;
+
+  @override
+  State<_HotspotCanvas> createState() => _HotspotCanvasState();
+}
+
+class _HotspotCanvasState extends State<_HotspotCanvas> {
+  final _canvasKey = GlobalKey();
+  bool _draggingHotspot = false;
+
+  void _updateHotspotPosition(String id, Offset globalPosition, Size canvasSize) {
+    final box = _canvasKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final local = box.globalToLocal(globalPosition);
+    final x = (local.dx / canvasSize.width).clamp(0.02, 0.98);
+    final y = (local.dy / canvasSize.height).clamp(0.02, 0.98);
+    widget.onMoveHotspot(id, x, y);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -609,7 +642,7 @@ class _HotspotCanvas extends StatelessWidget {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(11),
-          child: image.isEmpty
+          child: widget.image.isEmpty
               ? Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -622,49 +655,67 @@ class _HotspotCanvas extends StatelessWidget {
                 )
               : LayoutBuilder(
                   builder: (context, constraints) {
+                    final canvasSize = Size(constraints.maxWidth, constraints.maxHeight);
                     return Stack(
+                      key: _canvasKey,
                       fit: StackFit.expand,
                       children: [
-                        CatalogAssetImage(source: image, fit: BoxFit.contain),
+                        CatalogAssetImage(source: widget.image, fit: BoxFit.contain),
                         Positioned.fill(
                           child: GestureDetector(
                             behavior: HitTestBehavior.translucent,
-                            onTapDown: (details) {
-                              final box = context.findRenderObject() as RenderBox?;
+                            onTapUp: (details) {
+                              if (_draggingHotspot) return;
+                              final box = _canvasKey.currentContext?.findRenderObject() as RenderBox?;
                               if (box == null) return;
                               final local = box.globalToLocal(details.globalPosition);
-                              final x = (local.dx / constraints.maxWidth).clamp(0.02, 0.98);
-                              final y = (local.dy / constraints.maxHeight).clamp(0.02, 0.98);
-                              onTapImage(x, y);
+                              final x = (local.dx / canvasSize.width).clamp(0.02, 0.98);
+                              final y = (local.dy / canvasSize.height).clamp(0.02, 0.98);
+                              widget.onTapImage(x, y);
                             },
                           ),
                         ),
-                        ...hotspots.map((h) {
-                          final active = selectedId == h.id;
+                        ...widget.hotspots.map((h) {
+                          final active = widget.selectedId == h.id;
                           return Positioned(
-                            left: h.x * constraints.maxWidth - 14,
-                            top: h.y * constraints.maxHeight - 14,
+                            left: h.x * canvasSize.width - 14,
+                            top: h.y * canvasSize.height - 14,
                             child: GestureDetector(
-                              onTap: () => onSelect(h.id),
-                              behavior: HitTestBehavior.opaque,
-                              child: Container(
-                                width: 28,
-                                height: 28,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.white,
-                                  border: Border.all(
-                                    color: active ? AppColors.gold : AppColors.gold.withValues(alpha: 0.7),
-                                    width: active ? 3 : 2,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: AppColors.gold.withValues(alpha: 0.35),
-                                      blurRadius: active ? 10 : 4,
+                                onTap: () => widget.onSelect(h.id),
+                                onPanStart: (_) {
+                                  setState(() => _draggingHotspot = true);
+                                  widget.onSelect(h.id);
+                                },
+                                onPanUpdate: (details) {
+                                  _updateHotspotPosition(h.id, details.globalPosition, canvasSize);
+                                },
+                                onPanEnd: (_) {
+                                  Future.microtask(() {
+                                    if (mounted) setState(() => _draggingHotspot = false);
+                                  });
+                                },
+                                onPanCancel: () {
+                                  setState(() => _draggingHotspot = false);
+                                },
+                                behavior: HitTestBehavior.opaque,
+                                child: Container(
+                                  width: 28,
+                                  height: 28,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.white,
+                                    border: Border.all(
+                                      color: active ? AppColors.gold : AppColors.gold.withValues(alpha: 0.7),
+                                      width: active ? 3 : 2,
                                     ),
-                                  ],
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: AppColors.gold.withValues(alpha: 0.35),
+                                        blurRadius: active ? 10 : 4,
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
                             ),
                           );
                         }),

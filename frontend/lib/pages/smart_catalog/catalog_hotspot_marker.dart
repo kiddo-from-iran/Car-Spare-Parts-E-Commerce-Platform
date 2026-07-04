@@ -8,14 +8,12 @@ class CatalogHotspotMarker extends StatefulWidget {
     required this.active,
     required this.highlighted,
     required this.onTap,
-    required this.onHover,
     required this.label,
   });
 
   final bool active;
   final bool highlighted;
   final VoidCallback onTap;
-  final ValueChanged<bool> onHover;
   final String label;
 
   @override
@@ -43,13 +41,10 @@ class _CatalogHotspotMarkerState extends State<CatalogHotspotMarker>
   Widget build(BuildContext context) {
     final scale = widget.active || widget.highlighted ? 1.15 : 1.0;
 
-    return MouseRegion(
-      onEnter: (_) => widget.onHover(true),
-      onExit: (_) => widget.onHover(false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        behavior: HitTestBehavior.opaque,
-        child: AnimatedScale(
+    return GestureDetector(
+      onTap: widget.onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedScale(
           scale: scale,
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeOut,
@@ -100,8 +95,7 @@ class _CatalogHotspotMarkerState extends State<CatalogHotspotMarker>
             ),
           ),
         ),
-      ),
-    );
+      );
   }
 }
 

@@ -34,8 +34,64 @@ class CatalogDiagram extends StatefulWidget {
 }
 
 class _CatalogDiagramState extends State<CatalogDiagram> {
-  String? _hoveredId;
   final _imageKey = GlobalKey();
+  final _viewerKey = GlobalKey();
+  late final TransformationController _transformController;
+  late final ValueNotifier<double> _scaleNotifier;
+
+  static const _minScale = 1.0;
+  static const _maxScale = 3.0;
+  static const _zoomStep = 0.25;
+
+  @override
+  void initState() {
+    super.initState();
+    _scaleNotifier = ValueNotifier(_minScale);
+    _transformController = TransformationController();
+    _transformController.addListener(_onTransformChanged);
+  }
+
+  @override
+  void dispose() {
+    _transformController.removeListener(_onTransformChanged);
+    _transformController.dispose();
+    _scaleNotifier.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(CatalogDiagram oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.view.id != widget.view.id) {
+      _transformController.value = Matrix4.identity();
+      _scaleNotifier.value = _minScale;
+    }
+  }
+
+  void _onTransformChanged() {
+    final scale = _transformController.value.getMaxScaleOnAxis();
+    if ((scale - _scaleNotifier.value).abs() > 0.01) {
+      _scaleNotifier.value = scale;
+    }
+  }
+
+  void _applyZoom(double delta) {
+    final currentScale = _transformController.value.getMaxScaleOnAxis();
+    final targetScale = (currentScale + delta).clamp(_minScale, _maxScale);
+    if ((targetScale - currentScale).abs() < 0.001) return;
+
+    final box = _viewerKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final focalPoint = box.size.center(Offset.zero);
+    final scaleFactor = targetScale / currentScale;
+
+    final matrix = _transformController.value.clone()
+      ..translate(focalPoint.dx, focalPoint.dy)
+      ..scale(scaleFactor)
+      ..translate(-focalPoint.dx, -focalPoint.dy);
+
+    _transformController.value = matrix;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,11 +104,13 @@ class _CatalogDiagramState extends State<CatalogDiagram> {
       child: ColoredBox(
         color: AppColors.white,
         child: Stack(
+          key: _viewerKey,
           fit: StackFit.expand,
           children: [
             InteractiveViewer(
-              minScale: 1,
-              maxScale: hasImage ? 3 : 1,
+              transformationController: _transformController,
+              minScale: _minScale,
+              maxScale: hasImage ? _maxScale : _minScale,
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 350),
                 child: LayoutBuilder(
@@ -84,7 +142,6 @@ class _CatalogDiagramState extends State<CatalogDiagram> {
                           final active = widget.selectedHotspotId == hotspot.id;
                           final highlighted = widget.highlightedHotspotId == hotspot.id;
                           final dimmed = widget.categoryFilter != null && !visibleIds.contains(hotspot.id);
-                          final hovered = _hoveredId == hotspot.id;
 
                           return Positioned(
                             left: hotspot.x * constraints.maxWidth - 22,
@@ -100,19 +157,11 @@ class _CatalogDiagramState extends State<CatalogDiagram> {
                                     highlighted: highlighted,
                                     label: hotspot.label,
                                     onTap: () => widget.onHotspotTap(hotspot),
-                                    onHover: (v) {
-                                      setState(() => _hoveredId = v ? hotspot.id : null);
-                                      widget.onHotspotHover(v ? hotspot : null);
-                                    },
                                   ),
-                                  if (hovered || active)
+                                  if (active)
                                     Positioned(
                                       bottom: 36,
-                                      child: AnimatedOpacity(
-                                        opacity: hovered || active ? 1 : 0,
-                                        duration: const Duration(milliseconds: 180),
-                                        child: CatalogHotspotTooltip(label: hotspot.label),
-                                      ),
+                                      child: CatalogHotspotTooltip(label: hotspot.label),
                                     ),
                                 ],
                               ),
@@ -124,6 +173,68 @@ class _CatalogDiagramState extends State<CatalogDiagram> {
                   },
                 ),
               ),
+            ),
+            if (hasImage)
+              ValueListenableBuilder<double>(
+                valueListenable: _scaleNotifier,
+                builder: (context, scale, _) {
+                  return Positioned(
+                    left: 12,
+                    bottom: 12,
+                    child: _DiagramZoomControls(
+                      canZoomIn: scale < _maxScale - 0.01,
+                      canZoomOut: scale > _minScale + 0.01,
+                      onZoomIn: () => _applyZoom(_zoomStep),
+                      onZoomOut: () => _applyZoom(-_zoomStep),
+                    ),
+                  );
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DiagramZoomControls extends StatelessWidget {
+  const _DiagramZoomControls({
+    required this.canZoomIn,
+    required this.canZoomOut,
+    required this.onZoomIn,
+    required this.onZoomOut,
+  });
+
+  final bool canZoomIn;
+  final bool canZoomOut;
+  final VoidCallback onZoomIn;
+  final VoidCallback onZoomOut;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.white.withValues(alpha: 0.94),
+      elevation: 2,
+      shadowColor: Colors.black26,
+      borderRadius: BorderRadius.circular(10),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              onPressed: canZoomIn ? onZoomIn : null,
+              icon: Icon(Icons.add, size: 20, color: canZoomIn ? AppColors.gold : AppColors.textMuted),
+            ),
+            Container(height: 1, width: 28, color: AppColors.border),
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              onPressed: canZoomOut ? onZoomOut : null,
+              icon: Icon(Icons.remove, size: 20, color: canZoomOut ? AppColors.gold : AppColors.textMuted),
             ),
           ],
         ),
