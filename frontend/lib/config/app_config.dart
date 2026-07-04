@@ -17,7 +17,7 @@ class AppConfig {
   );
 
   static const _defaultLocalApi = 'http://localhost:8000';
-  static const _defaultProdApi = 'https://car-spare-parts-api.onrender.com';
+  static const _defaultProdApi = 'https://car-spare-parts-e-commerce-platform.onrender.com';
 
   /// Resolved at startup on web via [api-config.json]; compile-time define overrides.
   static String apiBaseUrl = _envApiBaseUrl.isNotEmpty

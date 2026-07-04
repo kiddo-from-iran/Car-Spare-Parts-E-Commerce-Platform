@@ -31,7 +31,7 @@ jobs:
       - name: Build Flutter web
         working-directory: frontend
         env:
-          API_URL: ${{ vars.API_BASE_URL != '' && vars.API_BASE_URL || 'https://car-spare-parts-api.onrender.com' }}
+          API_URL: ${{ vars.API_BASE_URL != '' && vars.API_BASE_URL || 'https://car-spare-parts-e-commerce-platform.onrender.com' }}
         run: |
           flutter pub get
           flutter build web --release \

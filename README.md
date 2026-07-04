@@ -146,8 +146,8 @@ After pushing to GitHub, the site is published automatically:
 | | URL |
 |---|-----|
 | **Website (Flutter Web)** | `https://kiddo-from-iran.github.io/Car-Spare-Parts-E-Commerce-Platform/` |
-| **API (FastAPI on Render)** | `https://car-spare-parts-api.onrender.com` |
-| **API docs** | `https://car-spare-parts-api.onrender.com/docs` |
+| **API (FastAPI on Render)** | `https://car-spare-parts-e-commerce-platform.onrender.com` |
+| **API docs** | `https://car-spare-parts-e-commerce-platform.onrender.com/docs` |
 
 Open the website link on any phone or PC. Use hash routes, e.g.  
 `https://kiddo-from-iran.github.io/Car-Spare-Parts-E-Commerce-Platform/#/smart-catalog`
@@ -169,7 +169,7 @@ Open the website link on any phone or PC. Use hash routes, e.g.
 
 | Symptom | Cause | Fix |
 |---------|--------|-----|
-| Browser console: **CORS blocked** on `car-spare-parts-api.onrender.com` | Backend not running (Render returns `404` / `x-render-routing: no-server`) | Complete step 3 above — create the Render service from `render.yaml` |
+| Browser console: **CORS blocked** on the Render API URL | Backend not running or wrong `apiBaseUrl` | Check `/api/health` on your Render service URL; update `frontend/web/api-config.json` |
 | No products / empty shop | Same — frontend cannot reach API | After Render is live, open `/api/health` and `/docs`; first free-tier request may take ~30s |
 | Local carousel images 404 (`lib/assets/images/...`) | Flutter web + GitHub Pages subpath | Fixed in `CatalogAssetImage` (loads `assets/lib/assets/...`); push and redeploy Pages |
 
@@ -197,7 +197,7 @@ Set the same URL in **`frontend/web/api-config.json`** → `"apiBaseUrl"`, then 
 cd frontend
 flutter build web --release `
   --base-href "/Car-Spare-Parts-E-Commerce-Platform/" `
-  --dart-define=API_BASE_URL=https://car-spare-parts-api.onrender.com
+  --dart-define=API_BASE_URL=https://car-spare-parts-e-commerce-platform.onrender.com
 ```
 
 ---
